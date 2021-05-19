@@ -78,45 +78,8 @@ class SPDev:
 
     @classmethod
     def get_metric_val_str(cls, metric):
-        if metric.datatype == MetricDataType.Int8:
-            val_str = "%d" % (metric.int_value)
-        elif metric.datatype == MetricDataType.Int16:
-            val_str = "%d" % (metric.int_value)
-        elif metric.datatype == MetricDataType.Int32:
-            val_str = "%d" % (metric.int_value)
-        elif metric.datatype == MetricDataType.Int64:
-            val_str = "%d" % (metric.long_value)
-        elif metric.datatype == MetricDataType.UInt8:
-            val_str = "%d" % (metric.int_value)
-        elif metric.datatype == MetricDataType.UInt16:
-            val_str = "%d" % (metric.int_value)
-        elif metric.datatype == MetricDataType.UInt32:
-            val_str = "%d" % (metric.int_value)
-        elif metric.datatype == MetricDataType.UInt64:
-            val_str = "%d" % (metric.long_value)
-        elif metric.datatype == MetricDataType.Float:
-            val_str = "%f" % (metric.float_value)
-        elif metric.datatype == MetricDataType.Double:
-            val_str = "%ld" % (metric.double_value)
-        elif metric.datatype == MetricDataType.Boolean:
-            val_str = "%s" % (metric.boolean_value)
-        elif metric.datatype == MetricDataType.String:
-            val_str = "%s" % (metric.string_value)
-        elif metric.datatype == MetricDataType.DateTime:
-            val_str = "%d" % (metric.long_value)
-        elif metric.datatype == MetricDataType.Text:
-            val_str = "%s" % (metric.string_value)
-        elif metric.datatype == MetricDataType.UUID:
-            val_str = "%s" % (metric.string_value)
-        elif metric.datatype == MetricDataType.Bytes:
-            val_str = "%r" % (metric.bytes_value)
-        elif metric.datatype == MetricDataType.File:
-            val_str = "%r" % (metric.bytes_value)
-        elif metric.datatype == MetricDataType.Template:
-            val_str = "%r" % (metric.bytes_value)
-        else:
-            val_str = "Unknown type %d" % (metric.datatype)
-        return val_str
+        # Use google's protobuf backend to print metric, it's quite verbose...
+        return "%s" % (metric)
 
     def get_metric_str(self, metric):
         """Return string describing metric if it is known to Device"""
@@ -248,9 +211,9 @@ def on_message(client, userdata, msg):
         else:
             for m in inboundPayload.metrics:
                 dev.print_metric(m)
+    print("------------------")
 
 
-    print("Done publishing")
 ######################################################################
 
 ######################################################################

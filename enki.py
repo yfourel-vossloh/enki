@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import sys
-sys.path.insert(0, "tahu/client_libraries/python/")
 
 import paho.mqtt.client as mqtt
 import sparkplug_b as sparkplug
@@ -9,6 +8,7 @@ import random
 import string
 
 from sparkplug_b import *
+sys.path.insert(0, "tahu/client_libraries/python/")
 
 
 class SparkplugTopic:
@@ -123,8 +123,8 @@ class SparkplugNetwork(object):
         def find_eon(self, topic):
             for eon in self.eon_nodes:
                 if (eon.birth_topic.namespace == topic.namespace and
-                    eon.birth_topic.group_id == topic.group_id and
-                    eon.birth_topic.edge_node_id == topic.edge_node_id):
+                        eon.birth_topic.group_id == topic.group_id and
+                        eon.birth_topic.edge_node_id == topic.edge_node_id):
                     return eon
             return None
 
@@ -141,7 +141,7 @@ class SparkplugNetwork(object):
 
     instance = None
 
-    def __new__(cls): # __new__ always a classmethod
+    def __new__(cls):
         if not SparkplugNetwork.instance:
             SparkplugNetwork.instance = SparkplugNetwork.__SparkplugNetwork()
         return SparkplugNetwork.instance
@@ -160,6 +160,7 @@ myNodeName = "enki"
 myUsername = "admin"
 myPassword = "changeme"
 
+
 ######################################################################
 # The callback for when the client receives a CONNACK response from the server.
 ######################################################################
@@ -175,6 +176,7 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("spBv1.0/" + myGroupId + "/#")
     client.subscribe("spBv1.0/" + myGroupId + "/#")
 ######################################################################
+
 
 ######################################################################
 # The callback for when a PUBLISH message is received from the server.
@@ -212,9 +214,8 @@ def on_message(client, userdata, msg):
             for m in inboundPayload.metrics:
                 dev.print_metric(m)
     print("------------------")
-
-
 ######################################################################
+
 
 ######################################################################
 # Main Application
@@ -245,6 +246,7 @@ def main():
         for _ in range(50):
             time.sleep(.1)
 ######################################################################
+
 
 if __name__ == "__main__":
     main()

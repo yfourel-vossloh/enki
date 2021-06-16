@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 
+sys.path.insert(0, "tahu/client_libraries/python/")
 import paho.mqtt.client as mqtt
 import sparkplug_b as sparkplug
 import time
@@ -8,7 +9,6 @@ import random
 import string
 
 from sparkplug_b import *
-sys.path.insert(0, "tahu/client_libraries/python/")
 
 
 class SparkplugTopic:

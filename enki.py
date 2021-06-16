@@ -8,6 +8,7 @@ import time
 import random
 import string
 import os
+import argparse
 
 from sparkplug_b import *
 
@@ -155,7 +156,6 @@ class SparkplugNetwork(object):
 
 
 # Application Variables
-serverUrl = "localhost"
 myGroupId = "Sparkplug B Devices"
 myNodeName = "enki"
 myUsername = "admin"
@@ -221,20 +221,24 @@ def on_message(client, userdata, msg):
 # Main Application
 ######################################################################
 def main():
-    print("Starting main application")
+    parser = argparse.ArgumentParser(description="View and manipulate sparkplug payload")
+    parser.add_argument('--server',
+                        help='MQTT broker address', default='localhost')
+    args = parser.parse_args()
+
 
     # Create the node death payload
     deathPayload = sparkplug.getNodeDeathPayload()
 
     # Start of main program - Set up the MQTT client connection
-    client = mqtt.Client(serverUrl + "enki_%d" % os.getpid(), 1883, 60)
+    client = mqtt.Client(args.server + "enki_%d" % os.getpid(), 1883, 60)
     client.on_connect = on_connect
     client.on_message = on_message
     client.username_pw_set(myUsername, myPassword)
     deathByteArray = bytearray(deathPayload.SerializeToString())
     client.will_set("spBv1.0/" + myGroupId + "/NDEATH/" + myNodeName,
                     deathByteArray, 0, False)
-    client.connect(serverUrl, 1883, 60)
+    client.connect(args.server, 1883, 60)
 
     # Short delay to allow connect callback to occur
     time.sleep(.1)

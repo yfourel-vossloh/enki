@@ -7,6 +7,7 @@ import sparkplug_b as sparkplug
 import time
 import random
 import string
+import os
 
 from sparkplug_b import *
 
@@ -173,8 +174,7 @@ def on_connect(client, userdata, flags, rc):
 
     # Subscribing in on_connect() means that if we lose the connection and
     # reconnect then subscriptions will be renewed.
-    client.subscribe("spBv1.0/" + myGroupId + "/#")
-    client.subscribe("spBv1.0/" + myGroupId + "/#")
+    client.subscribe("spBv1.0/#")
 ######################################################################
 
 
@@ -227,7 +227,7 @@ def main():
     deathPayload = sparkplug.getNodeDeathPayload()
 
     # Start of main program - Set up the MQTT client connection
-    client = mqtt.Client(serverUrl + "enki", 1883, 60)
+    client = mqtt.Client(serverUrl + "enki_%d" % os.getpid(), 1883, 60)
     client.on_connect = on_connect
     client.on_message = on_message
     client.username_pw_set(myUsername, myPassword)

@@ -418,9 +418,6 @@ def main():
     client.on_connect = on_connect
     client.on_message = on_message
     client.username_pw_set(myUsername, myPassword)
-    deathByteArray = bytearray(deathPayload.SerializeToString())
-    client.will_set("spBv1.0/" + myGroupId + "/NDEATH/" + myNodeName,
-                    deathByteArray, 0, False)
     client.connect(args.server, 1883, 60)
 
     # Short delay to allow connect callback to occur

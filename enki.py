@@ -1,16 +1,58 @@
 #!/usr/bin/env python
 import sys
-
-sys.path.insert(0, "tahu/client_libraries/python/")
-import paho.mqtt.client as mqtt
-import sparkplug_b as sparkplug
 import time
 import random
 import string
 import os
 import argparse
+import cmd
+import paho.mqtt.client as mqtt
 
+
+sys.path.insert(0, "tahu/client_libraries/python/")
+import sparkplug_b as sparkplug
 from sparkplug_b import *
+
+
+def datatype_to_str(datatype):
+    if (datatype == MetricDataType.Int8):
+        return "Int8"
+    elif datatype == MetricDataType.Int16:
+        return "Int16"
+    elif datatype == MetricDataType.Int32:
+        return "Int32"
+    elif datatype == MetricDataType.Int64:
+        return "Int64"
+    elif datatype == MetricDataType.UInt8:
+        return "UInt8"
+    elif datatype == MetricDataType.UInt16:
+        return "UInt16"
+    elif datatype == MetricDataType.UInt32:
+        return "UInt32"
+    elif datatype == MetricDataType.UInt64:
+        return "UInt64"
+    elif datatype == MetricDataType.Float:
+        return "Float"
+    elif datatype == MetricDataType.Double:
+        return "Double"
+    elif datatype == MetricDataType.Boolean:
+        return "Boolean"
+    elif datatype == MetricDataType.String:
+        return "String"
+    elif datatype == MetricDataType.DateTime:
+        return "DateTime"
+    elif datatype == MetricDataType.Text:
+        return "Text"
+    elif datatype == MetricDataType.UUID:
+        return "UUID"
+    elif datatype == MetricDataType.Bytes:
+        return "Bytes"
+    elif datatype == MetricDataType.File:
+        return "File"
+    elif datatype == MetricDataType.Template:
+        return "Template"
+    else:
+        return "Invalid datatype %s" % str(datatype)
 
 
 class SparkplugTopic:
@@ -47,6 +89,33 @@ class SparkplugTopic:
 
     def __str__(self):
         return "%s" % (self.topic)
+
+
+def forge_payload_from_metric(payload, metric):
+    """Add a user modified version of metric to payload"""
+    int_value_types = [MetricDataType.Int8,
+                       MetricDataType.Int16,
+                       MetricDataType.Int32,
+                       MetricDataType.UInt8,
+                       MetricDataType.UInt16,
+                       MetricDataType.UInt32]
+    long_value_types = [MetricDataType.Int64,
+                        MetricDataType.UInt64,
+                        MetricDataType.DateTime]
+    float_value_types = [MetricDataType.Float]
+    double_value_types = [MetricDataType.Double]
+    boolean_value_types = [MetricDataType.Boolean]
+    string_value_types = [MetricDataType.String,
+                          MetricDataType.Text,
+                          MetricDataType.UUID]
+    bytes_value_types = [MetricDataType.Bytes,
+                         MetricDataType.File]
+    if metric.datatype in int_value_types + long_value_types:
+        value = int(input("Enter integer value %s:"
+                          % (datatype_to_str(metric.datatype))))
+        addMetric(payload, None, metric.alias, metric.datatype, value)
+    else:
+        print("not implemented")
 
 
 class SPDev:
@@ -183,7 +252,6 @@ def on_connect(client, userdata, flags, rc):
 ######################################################################
 def on_message(client, userdata, msg):
     topic = SparkplugTopic(msg.topic)
-    print("Message arrived: %s" % (topic))
 
     sp_net = SparkplugNetwork()
     if topic.is_nbirth():
@@ -210,11 +278,28 @@ def on_message(client, userdata, msg):
         dev = sp_net.find_dev(topic)
         if dev is None:
             print("Unknown device for topic : %s" % (topic))
-        else:
-            for m in inboundPayload.metrics:
-                dev.print_metric(m)
-    print("------------------")
+        #else:
+        #    for m in inboundPayload.metrics:
+        #        dev.print_metric(m)
 ######################################################################
+
+
+######################################################################
+# SPShell
+######################################################################
+class SPShell(cmd.Cmd):
+    """Sparkplug Shell"""
+    def __init__(self):
+        cmd.Cmd.__init__(self)
+        self.prompt = "spsh> "
+        self.cmdloop("Sparkplug Shell")
+
+    def do_list(self, *args):
+        sp_net = SparkplugNetwork()
+        for eon in sp_net.eon_nodes:
+            print("- %s/%s" % (eon.birth_topic.group_id, eon.birth_topic.edge_node_id))
+            for dev in eon.devices:
+                print("   * %s" % (dev.birth_topic.device_id))
 
 
 ######################################################################
@@ -224,8 +309,9 @@ def main():
     parser = argparse.ArgumentParser(description="View and manipulate sparkplug payload")
     parser.add_argument('--server',
                         help='MQTT broker address', default='localhost')
+    parser.add_argument('--shell', action='store_true', default=False,
+                        help='Start Interactive Sparkplug Shell')
     args = parser.parse_args()
-
 
     # Create the node death payload
     deathPayload = sparkplug.getNodeDeathPayload()
@@ -244,11 +330,13 @@ def main():
     time.sleep(.1)
     client.loop_start()
 
-    while True:
-
-        # Sit and wait for inbound or outbound events
-        for _ in range(50):
-            time.sleep(.1)
+    if (args.shell):
+        spshell = SPShell()
+    else:
+        while True:
+            # Sit and wait for inbound or outbound events
+            for _ in range(50):
+                time.sleep(.1)
 ######################################################################
 
 

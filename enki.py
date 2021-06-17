@@ -297,10 +297,11 @@ def on_message(client, userdata, msg):
 ######################################################################
 # SPShell
 ######################################################################
+@cmd2.with_default_category('SPSH')
 class SPShell(cmd2.Cmd):
     """Sparkplug Shell"""
     def __init__(self):
-        cmd2.Cmd.__init__(self)
+        cmd2.Cmd.__init__(self, allow_cli_args=False)
         self.prompt = "spsh> "
         self.cmdloop("Sparkplug Shell")
 

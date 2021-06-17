@@ -303,7 +303,6 @@ class SPShell(cmd2.Cmd):
     def __init__(self):
         cmd2.Cmd.__init__(self, allow_cli_args=False)
         self.prompt = "spsh> "
-        self.cmdloop("Sparkplug Shell")
 
     def do_exit(self, *args):
         return True
@@ -409,8 +408,6 @@ def main():
     parser = argparse.ArgumentParser(description="View and manipulate sparkplug payload")
     parser.add_argument('--server',
                         help='MQTT broker address', default='localhost')
-    parser.add_argument('--shell', action='store_true', default=False,
-                        help='Start Interactive Sparkplug Shell')
     args = parser.parse_args()
 
     # Create the node death payload
@@ -430,13 +427,8 @@ def main():
     time.sleep(.1)
     client.loop_start()
 
-    if (args.shell):
-        spshell = SPShell()
-    else:
-        while True:
-            # Sit and wait for inbound or outbound events
-            for _ in range(50):
-                time.sleep(.1)
+    spshell = SPShell()
+    sys.exit(spshell.cmdloop("Sparkplug Shell"))
 ######################################################################
 
 

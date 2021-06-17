@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys
+import shlex
 import time
 import random
 import string
@@ -12,6 +13,8 @@ import paho.mqtt.client as mqtt
 sys.path.insert(0, "tahu/client_libraries/python/")
 import sparkplug_b as sparkplug
 from sparkplug_b import *
+
+sp_namespace = "spBv1.0"
 
 
 def datatype_to_str(datatype):
@@ -56,6 +59,13 @@ def datatype_to_str(datatype):
 
 
 class SparkplugTopic:
+
+    @staticmethod
+    def create(group_id, cmd, eon_id, dev_id=None):
+        topic_str = "%s/%s/%s/%s" % (sp_namespace, group_id, cmd, eon_id)
+        if dev_id is not None:
+            topic_str += "/%s" % (dev_id)
+        return SparkplugTopic(topic_str)
 
     def __init__(self, topic):
         tokens = topic.split("/")
@@ -294,17 +304,80 @@ class SPShell(cmd.Cmd):
         self.prompt = "spsh> "
         self.cmdloop("Sparkplug Shell")
 
-    def do_list(self, *args):
-        sp_net = SparkplugNetwork()
-        for eon in sp_net.eon_nodes:
-            print("- %s/%s" % (eon.birth_topic.group_id, eon.birth_topic.edge_node_id))
-            for dev in eon.devices:
-                print("   * %s" % (dev.birth_topic.device_id))
-
     def do_exit(self, *args):
         return True
     do_EOF = do_exit
 
+    def help_list(self):
+        print("list [short]:")
+        print("  Show list of Edge of Network Nodes (EoN) and devices")
+        print("")
+        print("short: display short path to device instead of full group/eon/device")
+
+    def do_list(self, *args):
+        cmd_args = args[0].split()
+        if len(cmd_args) == 0:
+            full_view = True
+        elif cmd_args[0] == "short":
+            full_view = False
+        else:
+            print("Invalid argument: %s" % cmd_args[0])
+            return
+
+        sp_net = SparkplugNetwork()
+        for eon in sp_net.eon_nodes:
+            print("- %s/%s" % (eon.birth_topic.group_id, eon.birth_topic.edge_node_id))
+            for dev in eon.devices:
+                if full_view:
+                    print("   * %s/%s/%s" % (eon.birth_topic.group_id,
+                                             eon.birth_topic.edge_node_id,
+                                             dev.birth_topic.device_id))
+                else:
+                    print("   * %s" % (dev.birth_topic.device_id))
+
+    def help_metrics(self):
+        print("metrics <sparkplug_id>")
+        print("  Show metrics available for an Edge of Network Node or a device")
+        print("")
+        print("sparkplug_id:")
+        print(" Unique string identifying the node or device requested")
+        print(" EoN format: <group_id>/<eon_id>")
+        print(" Devices format: <group_id>/<eon_id>/<device_id>")
+
+    def do_metrics(self, *args):
+        cmd_args = shlex.split(args[0])
+        if len(cmd_args) == 0:
+            print("Error: Missing sparkplug_id.")
+            self.help_metrics()
+            return
+
+        sparkplug_id = cmd_args[0].split("/")
+        if len(sparkplug_id) == 2:
+            group_id = sparkplug_id[0]
+            cmd = "NCMD"
+            eon_id = sparkplug_id[1]
+            dev_id = None
+        elif len(sparkplug_id) == 3:
+            group_id = sparkplug_id[0]
+            cmd = "DCMD"
+            eon_id = sparkplug_id[1]
+            dev_id = sparkplug_id[2]
+        else:
+            print("Error: Invalid sparkplug_id: %s" % (cmd_args[0]))
+            self.help_metrics()
+            return
+
+        topic = SparkplugTopic.create(group_id, cmd, eon_id, dev_id)
+
+        sp_net = SparkplugNetwork()
+        if dev_id is None:
+            sp_dev = sp_net.find_eon(topic)
+        else:
+            sp_dev = sp_net.find_dev(topic)
+
+        if sp_dev is not None:
+            for m in sp_dev.metrics:
+                print("%s[%d]: %s" % (m.name, m.alias, datatype_to_str(m.datatype)))
 
 ######################################################################
 # Main Application

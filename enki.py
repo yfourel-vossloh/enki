@@ -6,7 +6,7 @@ import random
 import string
 import os
 import argparse
-import cmd
+import cmd2
 import paho.mqtt.client as mqtt
 
 
@@ -297,16 +297,15 @@ def on_message(client, userdata, msg):
 ######################################################################
 # SPShell
 ######################################################################
-class SPShell(cmd.Cmd):
+class SPShell(cmd2.Cmd):
     """Sparkplug Shell"""
     def __init__(self):
-        cmd.Cmd.__init__(self)
+        cmd2.Cmd.__init__(self)
         self.prompt = "spsh> "
         self.cmdloop("Sparkplug Shell")
 
     def do_exit(self, *args):
         return True
-    do_EOF = do_exit
 
     def help_list(self):
         print("list [short]:")
@@ -334,6 +333,12 @@ class SPShell(cmd.Cmd):
                                              dev.birth_topic.device_id))
                 else:
                     print("   * %s" % (dev.birth_topic.device_id))
+
+    def complete_list(self, text, line, begidx, endidx):
+        index_dict = {
+            1: ["short"]
+        }
+        return self.index_based_complete(text, line, begidx, endidx, index_dict=index_dict)
 
     def help_metrics(self):
         print("metrics <sparkplug_id>")
@@ -378,6 +383,23 @@ class SPShell(cmd.Cmd):
         if sp_dev is not None:
             for m in sp_dev.metrics:
                 print("%s[%d]: %s" % (m.name, m.alias, datatype_to_str(m.datatype)))
+
+    def complete_metrics(self, text, line, begidx, endidx):
+        sp_net = SparkplugNetwork()
+        sp_id_list = []
+        for eon in sp_net.eon_nodes:
+            sp_id = "%s/%s" % (eon.birth_topic.group_id, eon.birth_topic.edge_node_id)
+            sp_id_list.append(sp_id)
+            for dev in eon.devices:
+                sp_id = "%s/%s/%s" % (eon.birth_topic.group_id,
+                                      eon.birth_topic.edge_node_id,
+                                      dev.birth_topic.device_id)
+                sp_id_list.append(sp_id)
+        index_dict = {
+            1: sp_id_list
+        }
+        return self.index_based_complete(text, line, begidx, endidx, index_dict=index_dict)
+
 
 ######################################################################
 # Main Application

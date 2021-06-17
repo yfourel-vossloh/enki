@@ -7,6 +7,7 @@ import string
 import os
 import argparse
 import cmd2
+import threading
 import paho.mqtt.client as mqtt
 
 
@@ -401,6 +402,29 @@ class SPShell(cmd2.Cmd):
         return self.index_based_complete(text, line, begidx, endidx, index_dict=index_dict)
 
 
+class MQTTInterface(threading.Thread):
+    def __init__(self, server):
+        super(MQTTInterface, self).__init__()
+        self.server = server
+        self.stop_request = threading.Event()
+
+        self.client = mqtt.Client(self.server + "enki_%d" % os.getpid(), 1883, 60)
+        self.client.user_data_set(self)
+        self.client.on_connect = on_connect
+        self.client.on_message = on_message
+        self.client.username_pw_set(myUsername, myPassword)
+
+    def join(self, timeout=None):
+        self.stop_request.set()
+        super(MQTTInterface, self).join(timeout)
+
+    def run(self):
+        self.client.connect(self.server, 1883, 60)
+
+        while not self.stop_request.isSet():
+            self.client.loop()
+
+
 ######################################################################
 # Main Application
 ######################################################################
@@ -410,19 +434,9 @@ def main():
                         help='MQTT broker address', default='localhost')
     args = parser.parse_args()
 
-    # Create the node death payload
-    deathPayload = sparkplug.getNodeDeathPayload()
-
-    # Start of main program - Set up the MQTT client connection
-    client = mqtt.Client(args.server + "enki_%d" % os.getpid(), 1883, 60)
-    client.on_connect = on_connect
-    client.on_message = on_message
-    client.username_pw_set(myUsername, myPassword)
-    client.connect(args.server, 1883, 60)
-
-    # Short delay to allow connect callback to occur
+    mqtt_if = MQTTInterface(args.server)
     time.sleep(.1)
-    client.loop_start()
+    mqtt_if.start()
 
     spshell = SPShell()
     sys.exit(spshell.cmdloop("Sparkplug Shell"))

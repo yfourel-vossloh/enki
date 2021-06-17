@@ -301,6 +301,10 @@ class SPShell(cmd.Cmd):
             for dev in eon.devices:
                 print("   * %s" % (dev.birth_topic.device_id))
 
+    def do_exit(self, *args):
+        return True
+    do_EOF = do_exit
+
 
 ######################################################################
 # Main Application

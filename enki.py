@@ -347,19 +347,75 @@ class SPShell(cmd2.Cmd):
         }
         return self.index_based_complete(text, line, begidx, endidx, index_dict=index_dict)
 
+    def broker_list_topics(self, args):
+        mqtt_if = MQTTInterface()
+        for topic in mqtt_if.get_subscribed_topics():
+            print(topic)
+
+    def broker_sub(self, args):
+        mqtt_if = MQTTInterface()
+        mqtt_if.subscribe(args.topic)
+
+    def broker_unsub(self, args):
+        mqtt_if = MQTTInterface()
+        mqtt_if.unsubscribe(args.topic)
+
+    parser_broker = cmd2.Cmd2ArgumentParser()
+    subparser_broker = parser_broker.add_subparsers(help='broker subcommands')
+    parser_list = subparser_broker.add_parser('list', help='List subscribed topics')
+    parser_list.set_defaults(func=broker_list_topics)
+    parser_sub = subparser_broker.add_parser('subscribe',
+                                             help='Subscribe to topic')
+    parser_sub.add_argument('topic', help='Topic to subcribe to')
+    parser_sub.set_defaults(func=broker_sub)
+    parser_unsub = subparser_broker.add_parser('unsubscribe',
+                                               help='Unsubscribe from topic')
+    parser_unsub.add_argument('topic', help='Topic to unsubcribe from')
+    parser_unsub.set_defaults(func=broker_unsub)
+
+    @cmd2.with_argparser(parser_broker)
+    def do_broker(self, args):
+        """Manage broker subscriptions"""
+        args.func(self, args)
+
 
 class MQTTInterface(threading.Thread):
-    def __init__(self, server):
+    __instance = None
+    def __new__(cls):
+        if MQTTInterface.__instance is None:
+            MQTTInterface.__instance = object.__new__(cls)
+        return MQTTInterface.__instance
+
+    def __init__(self):
+        if "server" in self.__dict__:
+            return
+
         super(MQTTInterface, self).__init__()
-        self.server = server
+        self.server = None
         self.stop_request = threading.Event()
 
-        self.client = mqtt.Client(self.server + "enki_%d" % os.getpid(), 1883, 60)
+        self.client = mqtt.Client("enki_%d" % os.getpid(), 1883, 60)
         self.client.user_data_set(self)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
         self.client.username_pw_set(myUsername, myPassword)
         self.subscribed_topics = ["spBv1.0/#"]
+
+    def set_server(self, server):
+        self.server = server
+
+    def get_subscribed_topics(self):
+        return self.subscribed_topics
+
+    def subscribe(self, topic):
+        if topic not in self.subscribed_topics:
+            self.client.subscribe(topic)
+            self.subscribed_topics.append(topic)
+
+    def unsubscribe(self, topic):
+        if topic in self.subscribed_topics:
+            self.client.unsubscribe(topic)
+            self.subscribed_topics.remove(topic)
 
     @staticmethod
     def on_connect(client, userdata, flags, rc):
@@ -429,7 +485,8 @@ def main():
                         help='MQTT broker address', default='localhost')
     args = parser.parse_args()
 
-    mqtt_if = MQTTInterface(args.server)
+    mqtt_if = MQTTInterface()
+    mqtt_if.set_server(args.server)
     time.sleep(.1)
     mqtt_if.start()
 

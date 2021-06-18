@@ -243,55 +243,8 @@ myPassword = "changeme"
 
 
 ######################################################################
-# The callback for when the client receives a CONNACK response from the server.
-######################################################################
-def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        print("Connected with result code "+str(rc))
-    else:
-        print("Failed to connect with result code "+str(rc))
-        sys.exit()
-
-    # Subscribing in on_connect() means that if we lose the connection and
-    # reconnect then subscriptions will be renewed.
-    client.subscribe("spBv1.0/#")
-######################################################################
-
-
-######################################################################
 # The callback for when a PUBLISH message is received from the server.
 ######################################################################
-def on_message(client, userdata, msg):
-    topic = SparkplugTopic(msg.topic)
-
-    sp_net = SparkplugNetwork()
-    if topic.is_nbirth():
-        print("Register node birth")
-        inboundPayload = sparkplug_b_pb2.Payload()
-        inboundPayload.ParseFromString(msg.payload)
-        node = EdgeNode(topic, inboundPayload.metrics)
-        sp_net.add_eon(node)
-        for m in inboundPayload.metrics:
-            node.print_metric(m)
-    elif topic.is_dbirth():
-        print("Register device birth")
-        eon = sp_net.find_eon(topic)
-        assert eon is not None, "Device birth before Node birth is not allowed"
-        inboundPayload = sparkplug_b_pb2.Payload()
-        inboundPayload.ParseFromString(msg.payload)
-        dev = SPDev(topic, inboundPayload.metrics)
-        eon.add_dev(dev)
-        for m in inboundPayload.metrics:
-            dev.print_metric(m)
-    elif topic.is_ddata():
-        inboundPayload = sparkplug_b_pb2.Payload()
-        inboundPayload.ParseFromString(msg.payload)
-        dev = sp_net.find_dev(topic)
-        if dev is None:
-            print("Unknown device for topic : %s" % (topic))
-        #else:
-        #    for m in inboundPayload.metrics:
-        #        dev.print_metric(m)
 ######################################################################
 
 
@@ -410,9 +363,58 @@ class MQTTInterface(threading.Thread):
 
         self.client = mqtt.Client(self.server + "enki_%d" % os.getpid(), 1883, 60)
         self.client.user_data_set(self)
-        self.client.on_connect = on_connect
-        self.client.on_message = on_message
+        self.client.on_connect = self.on_connect
+        self.client.on_message = self.on_message
         self.client.username_pw_set(myUsername, myPassword)
+        self.subscribed_topics = ["spBv1.0/#"]
+
+    @staticmethod
+    def on_connect(client, userdata, flags, rc):
+        """ The callback for when the client receives a CONNACK response from the server."""
+        if rc == 0:
+            print("Connected with result code "+str(rc))
+        else:
+            print("Failed to connect with result code "+str(rc))
+            sys.exit()
+
+        # Subscribing in on_connect() means that if we lose the connection and
+        # reconnect then subscriptions will be renewed.
+        for topic in userdata.subscribed_topics:
+            client.subscribe(topic)
+
+    @staticmethod
+    def on_message(client, userdata, msg):
+        """The callback for when a PUBLISH message is received from the server."""
+        topic = SparkplugTopic(msg.topic)
+
+        sp_net = SparkplugNetwork()
+        if topic.is_nbirth():
+            print("Register node birth")
+            inboundPayload = sparkplug_b_pb2.Payload()
+            inboundPayload.ParseFromString(msg.payload)
+            node = EdgeNode(topic, inboundPayload.metrics)
+            sp_net.add_eon(node)
+            for m in inboundPayload.metrics:
+                node.print_metric(m)
+        elif topic.is_dbirth():
+            print("Register device birth")
+            eon = sp_net.find_eon(topic)
+            assert eon is not None, "Device birth before Node birth is not allowed"
+            inboundPayload = sparkplug_b_pb2.Payload()
+            inboundPayload.ParseFromString(msg.payload)
+            dev = SPDev(topic, inboundPayload.metrics)
+            eon.add_dev(dev)
+            for m in inboundPayload.metrics:
+                dev.print_metric(m)
+        elif topic.is_ddata():
+            inboundPayload = sparkplug_b_pb2.Payload()
+            inboundPayload.ParseFromString(msg.payload)
+            dev = sp_net.find_dev(topic)
+            if dev is None:
+                print("Unknown device for topic : %s" % (topic))
+            #else:
+            #    for m in inboundPayload.metrics:
+            #        dev.print_metric(m)
 
     def join(self, timeout=None):
         self.stop_request.set()

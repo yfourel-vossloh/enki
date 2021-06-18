@@ -438,23 +438,19 @@ class MQTTInterface(threading.Thread):
 
         sp_net = SparkplugNetwork()
         if topic.is_nbirth():
-            print("Register node birth")
+            print("Register node birth: %s" % (topic))
             inboundPayload = sparkplug_b_pb2.Payload()
             inboundPayload.ParseFromString(msg.payload)
             node = EdgeNode(topic, inboundPayload.metrics)
             sp_net.add_eon(node)
-            for m in inboundPayload.metrics:
-                node.print_metric(m)
         elif topic.is_dbirth():
-            print("Register device birth")
+            print("Register device birth: %s" % (topic))
             eon = sp_net.find_eon(topic)
             assert eon is not None, "Device birth before Node birth is not allowed"
             inboundPayload = sparkplug_b_pb2.Payload()
             inboundPayload.ParseFromString(msg.payload)
             dev = SPDev(topic, inboundPayload.metrics)
             eon.add_dev(dev)
-            for m in inboundPayload.metrics:
-                dev.print_metric(m)
         elif topic.is_ddata():
             inboundPayload = sparkplug_b_pb2.Payload()
             inboundPayload.ParseFromString(msg.payload)

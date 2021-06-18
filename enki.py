@@ -192,47 +192,40 @@ class EdgeNode(SPDev):
 
 
 class SparkplugNetwork(object):
-    class __SparkplugNetwork:
-        def __init__(self):
+    __instance = None
+    def __new__(cls):
+        if SparkplugNetwork.__instance is None:
+            SparkplugNetwork.__instance = object.__new__(cls)
+        return SparkplugNetwork.__instance
+
+    def __init__(self):
+        if "eon_nodes" not in self.__dict__:
             self.eon_nodes = list()
 
-        def __str__(self):
-            return self.eon_nodes
+    def __str__(self):
+        return self.eon_nodes
 
-        def add_eon(self, eon):
-            self.eon_nodes.append(eon)
+    def add_eon(self, eon):
+        self.eon_nodes.append(eon)
 
-        def find_eon(self, topic):
-            for eon in self.eon_nodes:
-                if (eon.birth_topic.namespace == topic.namespace and
-                        eon.birth_topic.group_id == topic.group_id and
-                        eon.birth_topic.edge_node_id == topic.edge_node_id):
-                    return eon
+    def find_eon(self, topic):
+        for eon in self.eon_nodes:
+            if (eon.birth_topic.namespace == topic.namespace and
+                    eon.birth_topic.group_id == topic.group_id and
+                    eon.birth_topic.edge_node_id == topic.edge_node_id):
+                return eon
+        return None
+
+    def find_dev(self, topic):
+        assert topic.device_id is not None, \
+                "Invalid device topic: %s" % (topic)
+        eon = self.find_eon(topic)
+        if eon is None:
             return None
-
-        def find_dev(self, topic):
-            assert topic.device_id is not None, \
-                    "Invalid device topic: %s" % (topic)
-            eon = self.find_eon(topic)
-            if eon is None:
-                return None
-            for dev in eon.devices:
-                if dev.birth_topic.device_id == topic.device_id:
-                    return dev
-            return None
-
-    instance = None
-
-    def __new__(cls):
-        if not SparkplugNetwork.instance:
-            SparkplugNetwork.instance = SparkplugNetwork.__SparkplugNetwork()
-        return SparkplugNetwork.instance
-
-    def __getattr__(self, name):
-        return getattr(self.instance, name)
-
-    def __setattr__(self, name):
-        return setattr(self.instance, name)
+        for dev in eon.devices:
+            if dev.birth_topic.device_id == topic.device_id:
+                return dev
+        return None
 
 
 # Application Variables

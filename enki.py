@@ -125,6 +125,14 @@ def forge_payload_from_metric(payload, metric):
         value = int(input("Enter integer value %s:"
                           % (datatype_to_str(metric.datatype))))
         addMetric(payload, None, metric.alias, metric.datatype, value)
+    elif metric.datatype in boolean_value_types:
+        usr_input = input("Entre True or False:")
+        if usr_input == "True":
+            value = True
+            addMetric(payload, None, metric.alias, metric.datatype, value)
+        elif usr_input == "False":
+            value = False
+            addMetric(payload, None, metric.alias, metric.datatype, value)
     else:
         print("not implemented")
 
@@ -153,10 +161,11 @@ class SPDev:
 
     def get_metric(self, alias):
         """Get metric object from an alias"""
+        metrics = []
         for m in self.metrics:
             if m.alias == alias:
-                return m
-        return None
+                metrics.append(m)
+        return metrics
 
     @classmethod
     def get_metric_val_str(cls, metric):
@@ -330,6 +339,7 @@ class SPShell(cmd2.Cmd):
         if sp_dev is not None:
             for m in sp_dev.metrics:
                 print("%s[%d]: %s" % (m.name, m.alias, datatype_to_str(m.datatype)))
+                print(m)
 
     def complete_metrics(self, text, line, begidx, endidx):
         sp_net = SparkplugNetwork()
@@ -378,6 +388,83 @@ class SPShell(cmd2.Cmd):
         """Manage broker subscriptions"""
         args.func(self, args)
 
+    parser_send = cmd2.Cmd2ArgumentParser()
+    send_cmd_choices = ['NCMD', 'DCMD', 'NDATA', 'DDATA']
+    parser_send.add_argument('cmd_type', choices=send_cmd_choices,
+                             help='Command type the payload is sent with')
+    parser_send.add_argument('sparkplug_id',
+                             help='Id of EoN or device as returned by command "list"')
+
+    @cmd2.with_argparser(parser_send)
+    def do_send(self, args):
+        """Forge a payload to send for a particular EoN or device"""
+        sp_net = SparkplugNetwork()
+        sparkplug_id = args.sparkplug_id.split("/")
+        if len(sparkplug_id) == 2:
+            group_id = sparkplug_id[0]
+            cmd = args.cmd_type
+            eon_id = sparkplug_id[1]
+            dev_id = None
+        elif len(sparkplug_id) == 3:
+            group_id = sparkplug_id[0]
+            cmd = args.cmd_type
+            eon_id = sparkplug_id[1]
+            dev_id = sparkplug_id[2]
+        else:
+            print("Error: invalid sparkplug_id: %s" % (args.sparkplug_id))
+            return
+
+        topic = SparkplugTopic.create(group_id, cmd, eon_id, dev_id)
+        if dev_id is None:
+            sp_dev = sp_net.find_eon(topic)
+        else:
+            sp_dev = sp_net.find_dev(topic)
+
+        print("alias:\tmetric name")
+        aliases = []
+        for metric in sp_dev.metrics:
+            if metric.name == "bdSeq":
+                continue
+            aliases.append(metric.alias)
+            print("%d\t%s" % (metric.alias, metric.name))
+        alias_present = False
+        while True:
+            try:
+                usr_input = input("Enter metric's alias: ")
+                alias = int(usr_input)
+            except ValueError:
+                print("Invalid alias: %s" % (usr_input))
+                continue
+            else:
+                break
+        metric_candidates = sp_dev.get_metric(alias)
+        assert(len(metric_candidates) > 0)
+        if len(metric_candidates) > 1:
+            print("More than one metric with alias %d" % (alias))
+            idx = 0
+            for m in metric_candidates:
+                print("%d: %s" % (idx, m.name))
+                idx+=1
+            while True:
+                try:
+                    usr_input = input("Enter metric index")
+                    idx = int(usr_input)
+                    metric = metric_candidates[idx]
+                except:
+                    print("Invalid index: %s" % usr_input)
+                    continue
+                else:
+                    break
+        else:
+            metric = metric_candidates[0]
+
+        payload = sparkplug_b_pb2.Payload()
+
+        forge_payload_from_metric(payload, metric)
+        byte_array = bytearray(payload.SerializeToString())
+        mqtt_if = MQTTInterface()
+        mqtt_if.publish(str(topic), byte_array, 0, False)
+
 
 class MQTTInterface(threading.Thread):
     __instance = None
@@ -416,6 +503,9 @@ class MQTTInterface(threading.Thread):
         if topic in self.subscribed_topics:
             self.client.unsubscribe(topic)
             self.subscribed_topics.remove(topic)
+
+    def publish(self, topic, byte_array, qos, retain):
+        self.client.publish(topic, byte_array, qos, retain)
 
     @staticmethod
     def on_connect(client, userdata, flags, rc):

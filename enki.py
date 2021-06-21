@@ -203,6 +203,65 @@ class EdgeNode(SPDev):
         self.devices.append(device)
 
 
+class SPLogger(threading.Thread):
+    """Log every Sparkplug Payload on a specified topic"""
+    __loggers = list()
+
+    def __new__(cls, *args, **kwargs):
+        topic = args[0]
+        instance = cls.get_by_topic(topic)
+        if instance is None:
+            instance = super(SPLogger, cls).__new__(cls)
+            cls.__loggers.append(instance)
+        else:
+            print("Logger for %s already exist" % (topic))
+            instance = None
+        return instance
+
+    def __init__(self, topic):
+        super(SPLogger, self).__init__()
+        self.topic = topic
+        self.stop_request = threading.Event()
+        mqtt_if = MQTTInterface()
+        mqtt_if.subscribe(topic)
+
+    @classmethod
+    def list(cls):
+        idx = 0
+        for l in cls.__loggers:
+            print("%d) %s" % (idx, l.topic))
+            idx += 1
+
+    @classmethod
+    def get_by_topic(cls, topic):
+        for logger in cls.__loggers:
+            if topic == logger.topic:
+                return logger
+        return None
+
+    @classmethod
+    def stop(cls, topic):
+        logger = cls.get_by_topic(topic)
+        if logger is None:
+            print("Error: %s is not an active logger" % (topic))
+        else:
+            logger.join()
+            cls.__loggers.remove(logger)
+        return
+
+    def join(self, timeout=None):
+        mqtt_if = MQTTInterface()
+        mqtt_if.unsubscribe(self.topic)
+        self.stop_request.set()
+        super(SPLogger, self).join(timeout)
+
+    def run(self):
+        while not self.stop_request.isSet():
+            time.sleep(1)
+        print("Done logging %s" % (self.topic))
+
+
+
 class SparkplugNetwork(object):
     __instance = None
 
@@ -441,6 +500,51 @@ class SPShell(cmd2.Cmd):
         mqtt_if = MQTTInterface()
         mqtt_if.publish(str(topic), byte_array, 0, False)
 
+    def logger_list(self, args):
+        SPLogger.list()
+
+    def logger_stop(self, args):
+        SPLogger.stop(args.logger_id)
+
+    def logger_spid(self, args):
+        sparkplug_id = args.sparkplug_id.split("/")
+        cmd = "+"
+        if len(sparkplug_id) == 2:
+            dev_id = None
+        elif len(sparkplug_id) == 3:
+            dev_id = sparkplug_id[2]
+        else:
+            print("Error: invalid sparkplug_id: %s" % (args.sparkplug_id))
+            return
+        group_id = sparkplug_id[0]
+        eon_id = sparkplug_id[1]
+
+        topic = SparkplugTopic.create(group_id, cmd, eon_id, dev_id)
+        logger = SPLogger(str(topic))
+        if logger is not None:
+            logger.start()
+
+    parser_logger = cmd2.Cmd2ArgumentParser()
+    subparser_logger = parser_logger.add_subparsers(help='logger subcommands')
+    parser_logger_spid = subparser_logger.add_parser('spid', help='Start logging messages exchanged '
+                                                     'with a sparkplug_id')
+    parser_logger_spid.add_argument('sparkplug_id',
+                                    help='Id of EoN or device as returned by command "list"')
+    parser_logger_spid.set_defaults(func=logger_spid)
+
+    parser_logger_list = subparser_logger.add_parser('list', help='List active loggers and id to stop them')
+    parser_logger_list.set_defaults(func=logger_list)
+
+    parser_logger_stop = subparser_logger.add_parser('stop', help='Stop an active logger')
+    parser_logger_stop.add_argument('logger_id',
+                                    help='Logger id to stop as returned by command "logger list"')
+    parser_logger_stop.set_defaults(func=logger_stop)
+
+    @cmd2.with_argparser(parser_logger)
+    def do_logger(self, args):
+        """Log payloads related to a topic or a sparkplug id"""
+        args.func(self, args)
+
 
 class MQTTInterface(threading.Thread):
     __instance = None
@@ -554,7 +658,9 @@ def main():
     mqtt_if.start()
 
     spshell = SPShell()
-    sys.exit(spshell.cmdloop("Sparkplug Shell"))
+    ret = spshell.cmdloop("Sparkplug Shell")
+    MQTTInterface().join()
+    sys.exit(ret)
 ######################################################################
 
 

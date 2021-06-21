@@ -15,6 +15,9 @@ sys.path.insert(0, "tahu/client_libraries/python/")
 import sparkplug_b as sparkplug
 from sparkplug_b import *
 
+# Application Variables
+myUsername = "admin"
+myPassword = "changeme"
 sp_namespace = "spBv1.0"
 
 
@@ -202,6 +205,7 @@ class EdgeNode(SPDev):
 
 class SparkplugNetwork(object):
     __instance = None
+
     def __new__(cls):
         if SparkplugNetwork.__instance is None:
             SparkplugNetwork.__instance = object.__new__(cls)
@@ -235,19 +239,6 @@ class SparkplugNetwork(object):
             if dev.birth_topic.device_id == topic.device_id:
                 return dev
         return None
-
-
-# Application Variables
-myGroupId = "Sparkplug B Devices"
-myNodeName = "enki"
-myUsername = "admin"
-myPassword = "changeme"
-
-
-######################################################################
-# The callback for when a PUBLISH message is received from the server.
-######################################################################
-######################################################################
 
 
 ######################################################################
@@ -429,7 +420,7 @@ class SPShell(cmd2.Cmd):
             idx = 0
             for m in metric_candidates:
                 print("%d: %s" % (idx, m.name))
-                idx+=1
+                idx += 1
             while True:
                 try:
                     usr_input = input("Enter metric index")
@@ -453,6 +444,7 @@ class SPShell(cmd2.Cmd):
 
 class MQTTInterface(threading.Thread):
     __instance = None
+
     def __new__(cls):
         if MQTTInterface.__instance is None:
             MQTTInterface.__instance = object.__new__(cls)

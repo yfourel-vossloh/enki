@@ -263,38 +263,23 @@ class SPShell(cmd2.Cmd):
     def do_exit(self, *args):
         return True
 
-    def help_list(self):
-        print("list [short]:")
-        print("  Show list of Edge of Network Nodes (EoN) and devices")
-        print("")
-        print("short: display short path to device instead of full group/eon/device")
+    parser_list = cmd2.Cmd2ArgumentParser()
+    parser_list.add_argument('--short', action='store_true', default=False,
+                             help="display short path to device instead of full group/eon/device")
 
-    def do_list(self, *args):
-        cmd_args = args[0].split()
-        if len(cmd_args) == 0:
-            full_view = True
-        elif cmd_args[0] == "short":
-            full_view = False
-        else:
-            print("Invalid argument: %s" % cmd_args[0])
-            return
-
+    @cmd2.with_argparser(parser_list)
+    def do_list(self, args):
+        """Show list of birthed Edge of Network Nodes (EoN) and devices"""
         sp_net = SparkplugNetwork()
         for eon in sp_net.eon_nodes:
             print("- %s/%s" % (eon.birth_topic.group_id, eon.birth_topic.edge_node_id))
             for dev in eon.devices:
-                if full_view:
+                if not args.short:
                     print("   * %s/%s/%s" % (eon.birth_topic.group_id,
                                              eon.birth_topic.edge_node_id,
                                              dev.birth_topic.device_id))
                 else:
                     print("   * %s" % (dev.birth_topic.device_id))
-
-    def complete_list(self, text, line, begidx, endidx):
-        index_dict = {
-            1: ["short"]
-        }
-        return self.index_based_complete(text, line, begidx, endidx, index_dict=index_dict)
 
     def help_metrics(self):
         print("metrics <sparkplug_id>")

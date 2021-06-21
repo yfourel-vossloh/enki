@@ -228,7 +228,7 @@ class SPLogger(threading.Thread):
         mqtt_if = MQTTInterface()
         mqtt_if.subscribe(topic)
         topic_sanitized = topic.replace("+", "").replace("#", "").replace("//", "/").rstrip("/")
-        self.path = self.__timestamp + "/" + topic_sanitized + ".txt"
+        self.path = "logs_" + self.__timestamp + "/" + topic_sanitized + ".txt"
         pathlib.Path(os.path.dirname(self.path)).mkdir(parents=True, exist_ok=True)
         self.fd = open(self.path, 'w')
 

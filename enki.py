@@ -8,6 +8,8 @@ import os
 import argparse
 import cmd2
 import threading
+import pathlib
+import datetime
 import paho.mqtt.client as mqtt
 
 
@@ -206,6 +208,7 @@ class EdgeNode(SPDev):
 class SPLogger(threading.Thread):
     """Log every Sparkplug Payload on a specified topic"""
     __loggers = list()
+    __timestamp = datetime.datetime.today().strftime('%Y-%m-%d_%H%M%S')
 
     def __new__(cls, *args, **kwargs):
         topic = args[0]
@@ -220,24 +223,37 @@ class SPLogger(threading.Thread):
 
     def __init__(self, topic):
         super(SPLogger, self).__init__()
-        self.topic = topic
+        self.subscribed_topic = topic
         self.stop_request = threading.Event()
         mqtt_if = MQTTInterface()
         mqtt_if.subscribe(topic)
+        topic_sanitized = topic.replace("+", "").replace("#", "").replace("//", "/").rstrip("/")
+        self.path = self.__timestamp + "/" + topic_sanitized + ".txt"
+        pathlib.Path(os.path.dirname(self.path)).mkdir(parents=True, exist_ok=True)
+        self.fd = open(self.path, 'w')
 
     @classmethod
     def list(cls):
         idx = 0
         for l in cls.__loggers:
-            print("%d) %s" % (idx, l.topic))
+            print("%d) %s" % (idx, l.subscribed_topic))
             idx += 1
 
     @classmethod
     def get_by_topic(cls, topic):
         for logger in cls.__loggers:
-            if topic == logger.topic:
+            if topic == logger.subscribed_topic:
                 return logger
         return None
+
+    @classmethod
+    def get_all_matching_topic(cls, topic):
+        matches = []
+        for logger in cls.__loggers:
+            if mqtt.topic_matches_sub(logger.subscribed_topic, topic):
+                matches.append(logger)
+        return matches
+
 
     @classmethod
     def stop(cls, topic):
@@ -246,19 +262,23 @@ class SPLogger(threading.Thread):
             print("Error: %s is not an active logger" % (topic))
         else:
             logger.join()
+            logger.fd.close()
             cls.__loggers.remove(logger)
         return
 
+    def process_payload(self, payload):
+        self.fd.write(str(payload))
+
     def join(self, timeout=None):
         mqtt_if = MQTTInterface()
-        mqtt_if.unsubscribe(self.topic)
+        mqtt_if.unsubscribe(self.subscribed_topic)
         self.stop_request.set()
         super(SPLogger, self).join(timeout)
 
     def run(self):
         while not self.stop_request.isSet():
             time.sleep(1)
-        print("Done logging %s" % (self.topic))
+        print("Done logging %s" % (self.subscribed_topic))
 
 
 
@@ -631,6 +651,11 @@ class MQTTInterface(threading.Thread):
             #else:
             #    for m in inboundPayload.metrics:
             #        dev.print_metric(m)
+
+        loggers = SPLogger.get_all_matching_topic(msg.topic)
+        for l in loggers:
+            l.process_payload(inboundPayload)
+
 
     def join(self, timeout=None):
         self.stop_request.set()

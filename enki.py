@@ -298,6 +298,10 @@ class SparkplugNetwork(object):
         return self.eon_nodes
 
     def add_eon(self, eon):
+        # Remove any existing EoN
+        old_eon = self.find_eon(eon.birth_topic)
+        if old_eon is not None:
+            self.eon_nodes.remove(old_eon)
         self.eon_nodes.append(eon)
 
     def find_eon(self, topic):

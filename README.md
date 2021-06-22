@@ -6,3 +6,5 @@ When launched, the `enki.py` script gives access to a shell with commands to man
 
 Enki is the Sumerian god of water, knowledge, mischiefs, crafts and creations.
 
+# Demo
+[![asciicast](https://asciinema.org/a/lKGTwxDlLOYwGtsF1kecBLfa0.svg)](https://asciinema.org/a/lKGTwxDlLOYwGtsF1kecBLfa0)

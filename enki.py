@@ -252,17 +252,25 @@ class SPLogger(object):
                 matches.append(logger)
         return matches
 
+    def stop_instance(self):
+        self.fd.close()
+        mqtt_if = MQTTInterface()
+        mqtt_if.unsubscribe(self.subscribed_topic)
+        self.__loggers.remove(self)
+
     @classmethod
     def stop(cls, topic):
         logger = cls.get_by_topic(topic)
         if logger is None:
             print("Error: %s is not an active logger" % (topic))
         else:
-            logger.fd.close()
-            mqtt_if = MQTTInterface()
-            mqtt_if.unsubscribe(self.subscribed_topic)
-            cls.__loggers.remove(logger)
+            logger.stop_instance()
         return
+
+    @classmethod
+    def stop_all(cls):
+        for l in cls.__loggers:
+            l.stop_instance()
 
     def process_payload(self, payload):
         self.fd.write(str(payload))
@@ -616,23 +624,19 @@ class MQTTInterface(threading.Thread):
         topic = SparkplugTopic(msg.topic)
 
         sp_net = SparkplugNetwork()
+        inboundPayload = sparkplug_b_pb2.Payload()
+        inboundPayload.ParseFromString(msg.payload)
         if topic.is_nbirth():
             print("Register node birth: %s" % (topic))
-            inboundPayload = sparkplug_b_pb2.Payload()
-            inboundPayload.ParseFromString(msg.payload)
             node = EdgeNode(topic, inboundPayload.metrics)
             sp_net.add_eon(node)
         elif topic.is_dbirth():
             print("Register device birth: %s" % (topic))
             eon = sp_net.find_eon(topic)
             assert eon is not None, "Device birth before Node birth is not allowed"
-            inboundPayload = sparkplug_b_pb2.Payload()
-            inboundPayload.ParseFromString(msg.payload)
             dev = SPDev(topic, inboundPayload.metrics)
             eon.add_dev(dev)
         elif topic.is_ddata():
-            inboundPayload = sparkplug_b_pb2.Payload()
-            inboundPayload.ParseFromString(msg.payload)
             dev = sp_net.find_dev(topic)
             if dev is None:
                 print("Unknown device for topic : %s" % (topic))
@@ -669,6 +673,7 @@ def main():
     spshell = SPShell()
     ret = spshell.cmdloop("Sparkplug Shell")
     MQTTInterface().join()
+    SPLogger.stop_all()
     sys.exit(ret)
 ######################################################################
 

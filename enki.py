@@ -205,7 +205,7 @@ class EdgeNode(SPDev):
         self.devices.append(device)
 
 
-class SPLogger(threading.Thread):
+class SPLogger(object):
     """Log every Sparkplug Payload on a specified topic"""
     __loggers = list()
     __timestamp = datetime.datetime.today().strftime('%Y-%m-%d_%H%M%S')
@@ -222,9 +222,7 @@ class SPLogger(threading.Thread):
         return instance
 
     def __init__(self, topic):
-        super(SPLogger, self).__init__()
         self.subscribed_topic = topic
-        self.stop_request = threading.Event()
         mqtt_if = MQTTInterface()
         mqtt_if.subscribe(topic)
         topic_sanitized = topic.replace("+", "").replace("#", "").replace("//", "/").rstrip("/")
@@ -254,32 +252,20 @@ class SPLogger(threading.Thread):
                 matches.append(logger)
         return matches
 
-
     @classmethod
     def stop(cls, topic):
         logger = cls.get_by_topic(topic)
         if logger is None:
             print("Error: %s is not an active logger" % (topic))
         else:
-            logger.join()
             logger.fd.close()
+            mqtt_if = MQTTInterface()
+            mqtt_if.unsubscribe(self.subscribed_topic)
             cls.__loggers.remove(logger)
         return
 
     def process_payload(self, payload):
         self.fd.write(str(payload))
-
-    def join(self, timeout=None):
-        mqtt_if = MQTTInterface()
-        mqtt_if.unsubscribe(self.subscribed_topic)
-        self.stop_request.set()
-        super(SPLogger, self).join(timeout)
-
-    def run(self):
-        while not self.stop_request.isSet():
-            time.sleep(1)
-        print("Done logging %s" % (self.subscribed_topic))
-
 
 
 class SparkplugNetwork(object):
@@ -545,8 +531,6 @@ class SPShell(cmd2.Cmd):
 
         topic = SparkplugTopic.create(group_id, cmd, eon_id, dev_id)
         logger = SPLogger(str(topic))
-        if logger is not None:
-            logger.start()
 
     parser_logger = cmd2.Cmd2ArgumentParser()
     subparser_logger = parser_logger.add_subparsers(help='logger subcommands')
@@ -652,14 +636,10 @@ class MQTTInterface(threading.Thread):
             dev = sp_net.find_dev(topic)
             if dev is None:
                 print("Unknown device for topic : %s" % (topic))
-            #else:
-            #    for m in inboundPayload.metrics:
-            #        dev.print_metric(m)
 
         loggers = SPLogger.get_all_matching_topic(msg.topic)
         for l in loggers:
             l.process_payload(inboundPayload)
-
 
     def join(self, timeout=None):
         self.stop_request.set()

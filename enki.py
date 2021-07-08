@@ -22,6 +22,16 @@ myUsername = "admin"
 myPassword = "changeme"
 sp_namespace = "spBv1.0"
 
+def str_to_int(s):
+    """Convert string to int.
+
+    String must be a decimal or hexadecimal value with 0x prefix
+    """
+    s = s.strip()
+    if s[0:2] == '0x':
+        return int(s, 16)
+    else:
+        return int(s)
 
 def datatype_to_str(datatype):
     if (datatype == MetricDataType.Int8):
@@ -479,12 +489,12 @@ class SPShell(cmd2.Cmd):
             if metric.name == "bdSeq":
                 continue
             aliases.append(metric.alias)
-            print("%d\t%s" % (metric.alias, metric.name))
+            print("0x%016x \t%s" % (metric.alias, metric.name))
         alias_present = False
         while True:
             try:
                 usr_input = input("Enter metric's alias: ")
-                alias = int(usr_input)
+                alias = str_to_int(usr_input)
             except ValueError:
                 print("Invalid alias: %s" % (usr_input))
                 continue

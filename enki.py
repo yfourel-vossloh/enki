@@ -41,6 +41,37 @@ bytes_value_types = [MetricDataType.Bytes,
                      MetricDataType.File]
 
 
+def query_yes_no(question, default="yes"):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+            It must be "yes" (the default), "no" or None (meaning
+            an answer is required of the user).
+
+    The "answer" return value is True for "yes" or False for "no".
+    """
+    valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
+    if default is None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = input().lower()
+        if default is not None and choice == "":
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            sys.stdout.write("Please respond with 'yes' or 'no' " "(or 'y' or 'n').\n")
+
+
 def str_to_int(s):
     """Convert string to int.
 
@@ -194,12 +225,16 @@ def forge_dataset_metric(payload, metric):
                                 metric.dataset_value.columns,
                                 metric.dataset_value.types)
 
-    row = dataset.rows.add()
-    for (col, datatype) in zip(metric.dataset_value.columns, metric.dataset_value.types):
-        name = "%s/%s" % (metric.name, col)
-        value = prompt_user_simple_datatype(name, datatype)
-        element = row.elements.add()
-        add_value_to_element(element, value, datatype)
+    new_row = True
+    while new_row:
+        row = dataset.rows.add()
+        for (col, datatype) in zip(metric.dataset_value.columns, metric.dataset_value.types):
+            name = "%s/%s" % (metric.name, col)
+            value = prompt_user_simple_datatype(name, datatype)
+            element = row.elements.add()
+            add_value_to_element(element, value, datatype)
+        new_row = query_yes_no("new row ?")
+    print(payload)
 
 
 def forge_payload_from_metric(payload, metric):

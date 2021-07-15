@@ -22,6 +22,25 @@ myUsername = "admin"
 myPassword = "changeme"
 sp_namespace = "spBv1.0"
 
+int_value_types = [MetricDataType.Int8,
+                   MetricDataType.Int16,
+                   MetricDataType.Int32,
+                   MetricDataType.UInt8,
+                   MetricDataType.UInt16,
+                   MetricDataType.UInt32]
+long_value_types = [MetricDataType.Int64,
+                    MetricDataType.UInt64,
+                    MetricDataType.DateTime]
+float_value_types = [MetricDataType.Float]
+double_value_types = [MetricDataType.Double]
+boolean_value_types = [MetricDataType.Boolean]
+string_value_types = [MetricDataType.String,
+                      MetricDataType.Text,
+                      MetricDataType.UUID]
+bytes_value_types = [MetricDataType.Bytes,
+                     MetricDataType.File]
+
+
 def str_to_int(s):
     """Convert string to int.
 
@@ -32,6 +51,7 @@ def str_to_int(s):
         return int(s, 16)
     else:
         return int(s)
+
 
 def datatype_to_str(datatype):
     if (datatype == MetricDataType.Int8):
@@ -62,6 +82,8 @@ def datatype_to_str(datatype):
         return "DateTime"
     elif datatype == MetricDataType.Text:
         return "Text"
+    elif datatype == MetricDataType.DataSet:
+        return "DataSet"
     elif datatype == MetricDataType.UUID:
         return "UUID"
     elif datatype == MetricDataType.Bytes:
@@ -117,37 +139,77 @@ class SparkplugTopic:
         return "%s" % (self.topic)
 
 
-def forge_payload_from_metric(payload, metric):
-    """Add a user modified version of metric to payload"""
-    int_value_types = [MetricDataType.Int8,
-                       MetricDataType.Int16,
-                       MetricDataType.Int32,
-                       MetricDataType.UInt8,
-                       MetricDataType.UInt16,
-                       MetricDataType.UInt32]
-    long_value_types = [MetricDataType.Int64,
-                        MetricDataType.UInt64,
-                        MetricDataType.DateTime]
-    float_value_types = [MetricDataType.Float]
-    double_value_types = [MetricDataType.Double]
-    boolean_value_types = [MetricDataType.Boolean]
-    string_value_types = [MetricDataType.String,
-                          MetricDataType.Text,
-                          MetricDataType.UUID]
-    bytes_value_types = [MetricDataType.Bytes,
-                         MetricDataType.File]
-    if metric.datatype in int_value_types + long_value_types:
-        value = int(input("Enter integer value %s:"
-                          % (datatype_to_str(metric.datatype))))
-        addMetric(payload, None, metric.alias, metric.datatype, value)
-    elif metric.datatype in boolean_value_types:
+def prompt_user_simple_datatype(name, datatype):
+    usr_input = input("[%s] %s: " % (datatype_to_str(datatype), name))
+    value = None
+    if datatype in int_value_types + long_value_types:
+        value = str_to_int(usr_input)
+    elif datatype in boolean_value_types:
         usr_input = input("Entre True or False:")
         if usr_input == "True":
             value = True
-            addMetric(payload, None, metric.alias, metric.datatype, value)
         elif usr_input == "False":
             value = False
-            addMetric(payload, None, metric.alias, metric.datatype, value)
+    elif datatype in string_value_types:
+        value = usr_input
+
+    return value
+
+
+def add_value_to_element(element, value, type):
+    if type == MetricDataType.Int8:
+        element.int_value = value
+    elif type == MetricDataType.Int16:
+        element.int_value = value
+    elif type == MetricDataType.Int32:
+        element.int_value = value
+    elif type == MetricDataType.Int64:
+        element.long_value = value
+    elif type == MetricDataType.UInt8:
+        element.int_value = value
+    elif type == MetricDataType.UInt16:
+        element.int_value = value
+    elif type == MetricDataType.UInt32:
+        element.int_value = value
+    elif type == MetricDataType.UInt64:
+        element.long_value = value
+    elif type == MetricDataType.Float:
+        element.float_value = value
+    elif type == MetricDataType.Double:
+        element.double_value = value
+    elif type == MetricDataType.Boolean:
+        element.boolean_value = value
+    elif type == MetricDataType.String:
+        element.string_value = value
+    elif type == MetricDataType.DateTime:
+        element.long_value = value
+    elif type == MetricDataType.Text:
+        element.string_value = value
+    else:
+        print("Invalid: " + str(type))
+
+
+def forge_dataset_metric(payload, metric):
+    dataset = initDatasetMetric(payload, metric.name, metric.alias,
+                                metric.dataset_value.columns,
+                                metric.dataset_value.types)
+
+    row = dataset.rows.add()
+    for (col, datatype) in zip(metric.dataset_value.columns, metric.dataset_value.types):
+        name = "%s/%s" % (metric.name, col)
+        value = prompt_user_simple_datatype(name, datatype)
+        element = row.elements.add()
+        add_value_to_element(element, value, datatype)
+
+
+def forge_payload_from_metric(payload, metric):
+    """Add a user modified version of metric to payload"""
+    simple_datatype = int_value_types + long_value_types + boolean_value_types
+    if metric.datatype in int_value_types + long_value_types:
+        value = prompt_user_simple_datatype(metric.name, metric.datatype)
+        addMetric(payload, None, metric.alias, metric.datatype, value)
+    elif metric.datatype == MetricDataType.DataSet:
+        forge_dataset_metric(payload, metric)
     else:
         print("not implemented")
 

@@ -555,6 +555,15 @@ class SPShell(cmd2.Cmd):
     parser_send.add_argument('sparkplug_id',
                              help='Id of EoN or device as returned by command "list"')
 
+    def choose_metric(self, sp_dev):
+        metrics = []
+        for m in sp_dev.metrics:
+            if m.name == "bdSeq":
+                continue
+            metrics.append((m.alias, m.name))
+        alias = self.select(metrics, "metric ? ")
+        return alias
+
     @cmd2.with_argparser(parser_send)
     def do_send(self, args):
         """Forge a payload to send for a particular EoN or device"""
@@ -580,23 +589,7 @@ class SPShell(cmd2.Cmd):
         else:
             sp_dev = sp_net.find_dev(topic)
 
-        print("alias:\tmetric name")
-        aliases = []
-        for metric in sp_dev.metrics:
-            if metric.name == "bdSeq":
-                continue
-            aliases.append(metric.alias)
-            print("0x%016x \t%s" % (metric.alias, metric.name))
-        alias_present = False
-        while True:
-            try:
-                usr_input = input("Enter metric's alias: ")
-                alias = str_to_int(usr_input)
-            except ValueError:
-                print("Invalid alias: %s" % (usr_input))
-                continue
-            else:
-                break
+        alias = int(self.choose_metric(sp_dev))
         metric_candidates = sp_dev.get_metric(alias)
         assert(len(metric_candidates) > 0)
         if len(metric_candidates) > 1:

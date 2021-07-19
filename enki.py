@@ -271,13 +271,12 @@ class SPDev:
 
         self.metrics.append(metric)
 
-    def get_metric(self, alias):
-        """Get metric object from an alias"""
+    def get_metric(self, name):
+        """Get metric object from its name"""
         metrics = []
         for m in self.metrics:
-            if m.alias == alias:
-                metrics.append(m)
-        return metrics
+            if m.name == name:
+                return m
 
     @classmethod
     def get_metric_val_str(cls, metric):
@@ -560,9 +559,11 @@ class SPShell(cmd2.Cmd):
         for m in sp_dev.metrics:
             if m.name == "bdSeq":
                 continue
-            metrics.append((m.alias, m.name))
-        alias = self.select(metrics, "metric ? ")
-        return alias
+            metrics.append(m.name)
+        metric_name = self.select(metrics, "metric ? ")
+        metric = sp_dev.get_metric(metric_name)
+        assert metric is not None, "Could not find requested metric"
+        return metric
 
     @cmd2.with_argparser(parser_send)
     def do_send(self, args):
@@ -589,27 +590,7 @@ class SPShell(cmd2.Cmd):
         else:
             sp_dev = sp_net.find_dev(topic)
 
-        alias = int(self.choose_metric(sp_dev))
-        metric_candidates = sp_dev.get_metric(alias)
-        assert(len(metric_candidates) > 0)
-        if len(metric_candidates) > 1:
-            print("More than one metric with alias %d" % (alias))
-            idx = 0
-            for m in metric_candidates:
-                print("%d: %s" % (idx, m.name))
-                idx += 1
-            while True:
-                try:
-                    usr_input = input("Enter metric index")
-                    idx = int(usr_input)
-                    metric = metric_candidates[idx]
-                except:
-                    print("Invalid index: %s" % usr_input)
-                    continue
-                else:
-                    break
-        else:
-            metric = metric_candidates[0]
+        metric = self.choose_metric(sp_dev)
 
         payload = sparkplug_b_pb2.Payload()
 

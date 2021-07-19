@@ -41,37 +41,6 @@ bytes_value_types = [MetricDataType.Bytes,
                      MetricDataType.File]
 
 
-def query_yes_no(question, default="yes"):
-    """Ask a yes/no question via raw_input() and return their answer.
-
-    "question" is a string that is presented to the user.
-    "default" is the presumed answer if the user just hits <Enter>.
-            It must be "yes" (the default), "no" or None (meaning
-            an answer is required of the user).
-
-    The "answer" return value is True for "yes" or False for "no".
-    """
-    valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
-    if default is None:
-        prompt = " [y/n] "
-    elif default == "yes":
-        prompt = " [Y/n] "
-    elif default == "no":
-        prompt = " [y/N] "
-    else:
-        raise ValueError("invalid default answer: '%s'" % default)
-
-    while True:
-        sys.stdout.write(question + prompt)
-        choice = input().lower()
-        if default is not None and choice == "":
-            return valid[default]
-        elif choice in valid:
-            return valid[choice]
-        else:
-            sys.stdout.write("Please respond with 'yes' or 'no' " "(or 'y' or 'n').\n")
-
-
 def str_to_int(s):
     """Convert string to int.
 
@@ -170,23 +139,6 @@ class SparkplugTopic:
         return "%s" % (self.topic)
 
 
-def prompt_user_simple_datatype(name, datatype):
-    usr_input = input("[%s] %s: " % (datatype_to_str(datatype), name))
-    value = None
-    if datatype in int_value_types + long_value_types:
-        value = str_to_int(usr_input)
-    elif datatype in boolean_value_types:
-        usr_input = input("Entre True or False:")
-        if usr_input == "True":
-            value = True
-        elif usr_input == "False":
-            value = False
-    elif datatype in string_value_types:
-        value = usr_input
-
-    return value
-
-
 def add_value_to_element(element, value, type):
     if type == MetricDataType.Int8:
         element.int_value = value
@@ -218,35 +170,6 @@ def add_value_to_element(element, value, type):
         element.string_value = value
     else:
         print("Invalid: " + str(type))
-
-
-def forge_dataset_metric(payload, metric):
-    dataset = initDatasetMetric(payload, metric.name, metric.alias,
-                                metric.dataset_value.columns,
-                                metric.dataset_value.types)
-
-    new_row = True
-    while new_row:
-        row = dataset.rows.add()
-        for (col, datatype) in zip(metric.dataset_value.columns, metric.dataset_value.types):
-            name = "%s/%s" % (metric.name, col)
-            value = prompt_user_simple_datatype(name, datatype)
-            element = row.elements.add()
-            add_value_to_element(element, value, datatype)
-        new_row = query_yes_no("new row ?")
-    print(payload)
-
-
-def forge_payload_from_metric(payload, metric):
-    """Add a user modified version of metric to payload"""
-    simple_datatype = int_value_types + long_value_types + boolean_value_types
-    if metric.datatype in int_value_types + long_value_types:
-        value = prompt_user_simple_datatype(metric.name, metric.datatype)
-        addMetric(payload, None, metric.alias, metric.datatype, value)
-    elif metric.datatype == MetricDataType.DataSet:
-        forge_dataset_metric(payload, metric)
-    else:
-        print("not implemented")
 
 
 class SPDev:
@@ -565,6 +488,60 @@ class SPShell(cmd2.Cmd):
         assert metric is not None, "Could not find requested metric"
         return metric
 
+    def query_yes_no(self, prompt):
+        yesses = ["yes", "y", "YES", "Yes"]
+        nos = ["no", "n", "NO", "No"]
+        while True:
+            usr_input = self.read_input(prompt + "[y/n]", choices=yesses + nos,
+                                        completion_mode=cmd2.utils.CompletionMode.CUSTOM)
+            if usr_input in yesses:
+                return True
+            elif usr_input in nos:
+                return False
+            print("Invalid choice: %s" % usr_input)
+
+    def prompt_user_simple_datatype(self, name, datatype):
+        prompt = "[%s] %s: " % (datatype_to_str(datatype), name)
+        if datatype in boolean_value_types:
+            usr_input = self.select(["True", "False"], prompt)
+            if usr_input == "True":
+                value = True
+            else:
+                value = False
+        elif datatype in int_value_types + long_value_types:
+            usr_input = self.read_input(prompt)
+            value = str_to_int(usr_input)
+        elif datatype in string_value_types:
+            value = self.read_input(prompt)
+
+        return value
+
+    def forge_dataset_metric(self, payload, metric):
+        dataset = initDatasetMetric(payload, metric.name, metric.alias,
+                                    metric.dataset_value.columns,
+                                    metric.dataset_value.types)
+
+        new_row = True
+        while new_row:
+            row = dataset.rows.add()
+            for (col, datatype) in zip(metric.dataset_value.columns, metric.dataset_value.types):
+                name = "%s/%s" % (metric.name, col)
+                value = self.prompt_user_simple_datatype(name, datatype)
+                element = row.elements.add()
+                add_value_to_element(element, value, datatype)
+            new_row = self.query_yes_no("new row ?")
+
+    def forge_payload_from_metric(self, payload, metric):
+        """Add a user modified version of metric to payload"""
+        simple_datatypes = int_value_types + long_value_types + boolean_value_types
+        if metric.datatype in simple_datatypes:
+            value = self.prompt_user_simple_datatype(metric.name, metric.datatype)
+            addMetric(payload, None, metric.alias, metric.datatype, value)
+        elif metric.datatype == MetricDataType.DataSet:
+            self.forge_dataset_metric(payload, metric)
+        else:
+            print("not implemented")
+
     @cmd2.with_argparser(parser_send)
     def do_send(self, args):
         """Forge a payload to send for a particular EoN or device"""
@@ -594,7 +571,7 @@ class SPShell(cmd2.Cmd):
 
         payload = sparkplug_b_pb2.Payload()
 
-        forge_payload_from_metric(payload, metric)
+        self.forge_payload_from_metric(payload, metric)
         byte_array = bytearray(payload.SerializeToString())
         mqtt_if = MQTTInterface()
         mqtt_if.publish(str(topic), byte_array, 0, False)

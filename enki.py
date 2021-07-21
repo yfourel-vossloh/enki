@@ -567,11 +567,15 @@ class SPShell(cmd2.Cmd):
         else:
             sp_dev = sp_net.find_dev(topic)
 
-        metric = self.choose_metric(sp_dev)
 
         payload = sparkplug_b_pb2.Payload()
 
-        self.forge_payload_from_metric(payload, metric)
+        new_metric = True
+        while new_metric:
+            metric = self.choose_metric(sp_dev)
+            self.forge_payload_from_metric(payload, metric)
+            new_metric = self.query_yes_no("new metric ?")
+
         byte_array = bytearray(payload.SerializeToString())
         mqtt_if = MQTTInterface()
         mqtt_if.publish(str(topic), byte_array, 0, False)
@@ -725,8 +729,8 @@ def main():
 
     mqtt_if = MQTTInterface()
     mqtt_if.set_server(args.server)
-    time.sleep(.1)
     mqtt_if.start()
+    time.sleep(.1)
 
     spshell = SPShell()
     ret = spshell.cmdloop("Sparkplug Shell")

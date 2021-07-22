@@ -132,6 +132,9 @@ class SparkplugTopic:
     def is_ddata(self):
         return self.message_type == "DDATA"
 
+    def eon_id(self):
+        return self.edge_node_id
+
     def __repr__(self):
         return "%s(\"%s\")" % (type(self).__name__, self.topic)
 

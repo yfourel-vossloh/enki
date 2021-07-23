@@ -10,11 +10,20 @@ Enki is the Sumerian god of water, knowledge, mischiefs, crafts and creations.
 [![asciicast](https://asciinema.org/a/lKGTwxDlLOYwGtsF1kecBLfa0.svg)](https://asciinema.org/a/lKGTwxDlLOYwGtsF1kecBLfa0)
 
 # Docker image
+##
 ## Build
 ```
 docker build -t enki .
 ```
+If you do not want t build the docker image, you can pull it from container registry.
 ## Run
+If you have built the image:
 ```
 docker run -it --rm enki --server <mqtt broker hostname>
 ```
+
+Pull the image from registry:
+```
+docker run -it --rm ghcr.io/siemaapplications/enki:<tag> --server <mqtt broker hostname>
+```
+> :bulb: in the above commands, replace `<tag>` and `<mqtt broker hostname>` with the appropriate values.

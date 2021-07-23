@@ -8,3 +8,13 @@ Enki is the Sumerian god of water, knowledge, mischiefs, crafts and creations.
 
 # Demo
 [![asciicast](https://asciinema.org/a/lKGTwxDlLOYwGtsF1kecBLfa0.svg)](https://asciinema.org/a/lKGTwxDlLOYwGtsF1kecBLfa0)
+
+# Docker image
+## Build
+```
+docker build -t enki .
+```
+## Run
+```
+docker run -it --rm enki --server <mqtt broker hostname>
+```

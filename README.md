@@ -27,4 +27,5 @@ Pull the image from registry:
 docker run -it --rm ghcr.io/siemaapplications/enki:<tag> --server <mqtt broker hostname>
 ```
 > :bulb: in the above commands, replace `<tag>` and `<mqtt broker hostname>` with the appropriate values.
-> `mqtt broker hostname` should be the ip of the docker network interface if a broker is running on the host.
+> `mqtt broker hostname` should be the ip of the docker network interface if a broker is running on the host:
+> `ip -4 -br a s docker0 | awk '{print $3}' | cut -d/ -f1`

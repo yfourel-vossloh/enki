@@ -649,6 +649,7 @@ class MQTTInterface(threading.Thread):
         self.client.on_message = self.on_message
         self.client.username_pw_set(myUsername, myPassword)
         self.subscribed_topics = ["spBv1.0/#"]
+        self.forwarded_topics = dict()
 
     def set_server(self, server):
         self.server = server
@@ -669,6 +670,14 @@ class MQTTInterface(threading.Thread):
     def publish(self, topic, byte_array, qos, retain):
         self.client.publish(topic, byte_array, qos, retain)
 
+    def forward_topic(self, topic, q_io):
+        """Forward messages received on topic to queue"""
+        self.forwarded_topics[topic] = q_io
+
+    def stop_forwarding(self, topic):
+        """Stop forwarding messages received on topic"""
+        self.forwarded_topics.pop(topic)
+
     @staticmethod
     def on_connect(client, userdata, flags, rc):
         """ The callback for when the client receives a CONNACK response from the server."""
@@ -686,6 +695,10 @@ class MQTTInterface(threading.Thread):
     @staticmethod
     def on_message(client, userdata, msg):
         """The callback for when a PUBLISH message is received from the server."""
+        for (topic, q_io) in userdata.forwarded_topics.items():
+            if mqtt.topic_matches_sub(topic, msg.topic):
+                q_io.put(msg)
+
         topic = SparkplugTopic(msg.topic)
 
         sp_net = SparkplugNetwork()

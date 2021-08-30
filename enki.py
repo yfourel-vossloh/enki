@@ -17,6 +17,7 @@ sys.path.insert(0, "tahu/client_libraries/python/")
 import sparkplug_b as sparkplug
 from sparkplug_b import *
 from sp_topic import SparkplugTopic
+from sp_dev import SPDev, EdgeNode
 
 # Application Variables
 myUsername = "admin"
@@ -127,82 +128,6 @@ def add_value_to_element(element, value, type):
         element.string_value = value
     else:
         print("Invalid: " + str(type))
-
-
-class SPDev:
-    """Base class for Edge of Network Nodes or Devices"""
-    def __init__(self, birth_topic, metrics):
-        self.birth_topic = birth_topic
-        self.edge_node_id = birth_topic.edge_node_id
-        self.metrics = metrics
-
-    def __repr__(self):
-        return "%s(\"%s\")" % (type(self).__name__, self.birth_topic)
-
-    def add_metric(self, metric):
-        """Add a metric to a device
-
-        The alias of the added metric must not already exists in the metrics
-        attached to the Device
-        """
-        for m in self.metrics:
-            assert m.alias == metric.alias, \
-                    "Alias %d already exists in device" % (m.alias)
-
-        self.metrics.append(metric)
-
-    def get_metric(self, name):
-        """Get metric object from its name"""
-        metrics = []
-        for m in self.metrics:
-            if m.name == name:
-                return m
-
-    def get_cmd_topic(self):
-        if self.birth_topic.is_nbirth():
-            cmd = "NCMD"
-            device = ""
-        else:
-            cmd = "DCMD"
-            device = "/%s" % (self.birth_topic.device_id)
-        topic = "%s/%s/%s/%s%s" % (self.birth_topic.namespace,
-                                   self.birth_topic.group_id,
-                                   cmd,
-                                   self.birth_topic.edge_node_id,
-                                   device)
-        return topic
-
-    @classmethod
-    def get_metric_val_str(cls, metric):
-        # Use google's protobuf backend to print metric, it's quite verbose...
-        return "%s" % (metric)
-
-    def get_metric_str(self, metric):
-        """Return string describing metric if it is known to Device"""
-        for m in self.metrics:
-            if m.alias == metric.alias:
-                s = "%s: %s" % (m.name, self.get_metric_val_str(metric))
-                return s
-        return None
-
-    def print_metric(self, metric):
-        """Print received metric using list of known metrics"""
-        s = self.get_metric_str(metric)
-        if s is None:
-            print("Unknown metric %d for Edge Node %s" % (metric.alias,
-                                                          self.edge_node_id))
-        else:
-            print(s)
-
-
-class EdgeNode(SPDev):
-    def __init__(self, birth_topic, metrics):
-        super().__init__(birth_topic, metrics)
-        self.devices = list()
-
-    def add_dev(self, device):
-        # TODO: check if device does not already exist.
-        self.devices.append(device)
 
 
 class SPLogger(object):

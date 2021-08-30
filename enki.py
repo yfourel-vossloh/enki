@@ -698,10 +698,6 @@ class MQTTInterface(threading.Thread):
     @staticmethod
     def on_message(client, userdata, msg):
         """The callback for when a PUBLISH message is received from the server."""
-        for (topic, q_io) in userdata.forwarded_topics.items():
-            if mqtt.topic_matches_sub(topic, msg.topic):
-                q_io.put(msg)
-
         topic = SparkplugTopic(msg.topic)
 
         sp_net = SparkplugNetwork()
@@ -725,6 +721,10 @@ class MQTTInterface(threading.Thread):
         loggers = SPLogger.get_all_matching_topic(msg.topic)
         for l in loggers:
             l.process_payload(inboundPayload)
+
+        for (topic, q_io) in userdata.forwarded_topics.items():
+            if mqtt.topic_matches_sub(topic, msg.topic):
+                q_io.put(msg)
 
     def join(self, timeout=None):
         self.stop_request.set()

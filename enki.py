@@ -204,6 +204,20 @@ class SPDev:
             if m.name == name:
                 return m
 
+    def get_cmd_topic(self):
+        if self.birth_topic.is_nbirth():
+            cmd = "NCMD"
+            device = ""
+        else:
+            cmd = "DCMD"
+            device = "/%s" % (self.birth_topic.device_id)
+        topic = "%s/%s/%s/%s%s" % (self.birth_topic.namespace,
+                                   self.birth_topic.group_id,
+                                   cmd,
+                                   self.birth_topic.edge_node_id,
+                                   device)
+        return topic
+
     @classmethod
     def get_metric_val_str(cls, metric):
         # Use google's protobuf backend to print metric, it's quite verbose...

@@ -321,7 +321,10 @@ class SparkplugNetwork(object):
             self.eon_nodes = list()
 
     def __str__(self):
-        return self.eon_nodes
+        display = ""
+        for eon in self.eon_nodes:
+            display += "%s" % (eon)
+        return display
 
     def add_eon(self, eon):
         # Remove any existing EoN

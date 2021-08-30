@@ -2,27 +2,18 @@
 import sys
 import shlex
 import time
-import random
-import string
-import os
 import argparse
 import cmd2
-import threading
-import pathlib
-import datetime
-import paho.mqtt.client as mqtt
 
 
-sys.path.insert(0, "tahu/client_libraries/python/")
-import sparkplug_b as sparkplug
-from sparkplug_b import *
+import sparkplug_b_pb2
+from sparkplug_b import MetricDataType, addMetric
 from sp_topic import SparkplugTopic
-from sp_dev import SPDev, EdgeNode
+from sp_logger import SPLogger
+from mqtt_if import MQTTInterface
+from sp_network import SparkplugNetwork
 
 # Application Variables
-myUsername = "admin"
-myPassword = "changeme"
-
 int_value_types = [MetricDataType.Int8,
                    MetricDataType.Int16,
                    MetricDataType.Int32,
@@ -55,7 +46,7 @@ def str_to_int(s):
 
 
 def datatype_to_str(datatype):
-    if (datatype == MetricDataType.Int8):
+    if datatype == MetricDataType.Int8:
         return "Int8"
     elif datatype == MetricDataType.Int16:
         return "Int16"
@@ -128,122 +119,6 @@ def add_value_to_element(element, value, type):
         element.string_value = value
     else:
         print("Invalid: " + str(type))
-
-
-class SPLogger(object):
-    """Log every Sparkplug Payload on a specified topic"""
-    __loggers = list()
-    __timestamp = datetime.datetime.today().strftime('%Y-%m-%d_%H%M%S')
-
-    def __new__(cls, *args, **kwargs):
-        topic = args[0]
-        instance = cls.get_by_topic(topic)
-        if instance is None:
-            instance = super(SPLogger, cls).__new__(cls)
-            cls.__loggers.append(instance)
-        else:
-            print("Logger for %s already exist" % (topic))
-            instance = None
-        return instance
-
-    def __init__(self, topic):
-        self.subscribed_topic = topic
-        mqtt_if = MQTTInterface()
-        mqtt_if.subscribe(topic)
-        topic_sanitized = topic.replace("+", "").replace("#", "").replace("//", "/").rstrip("/")
-        self.path = "logs_" + self.__timestamp + "/" + topic_sanitized + ".txt"
-        pathlib.Path(os.path.dirname(self.path)).mkdir(parents=True, exist_ok=True)
-        self.fd = open(self.path, 'w')
-
-    @classmethod
-    def list(cls):
-        idx = 0
-        for l in cls.__loggers:
-            print("%d) %s" % (idx, l.subscribed_topic))
-            idx += 1
-
-    @classmethod
-    def get_by_topic(cls, topic):
-        for logger in cls.__loggers:
-            if topic == logger.subscribed_topic:
-                return logger
-        return None
-
-    @classmethod
-    def get_all_matching_topic(cls, topic):
-        matches = []
-        for logger in cls.__loggers:
-            if mqtt.topic_matches_sub(logger.subscribed_topic, topic):
-                matches.append(logger)
-        return matches
-
-    def stop_instance(self):
-        self.fd.close()
-        mqtt_if = MQTTInterface()
-        mqtt_if.unsubscribe(self.subscribed_topic)
-        self.__loggers.remove(self)
-
-    @classmethod
-    def stop(cls, topic):
-        logger = cls.get_by_topic(topic)
-        if logger is None:
-            print("Error: %s is not an active logger" % (topic))
-        else:
-            logger.stop_instance()
-        return
-
-    @classmethod
-    def stop_all(cls):
-        for l in cls.__loggers:
-            l.stop_instance()
-
-    def process_payload(self, payload):
-        self.fd.write(str(payload))
-
-
-class SparkplugNetwork(object):
-    __instance = None
-
-    def __new__(cls):
-        if SparkplugNetwork.__instance is None:
-            SparkplugNetwork.__instance = object.__new__(cls)
-        return SparkplugNetwork.__instance
-
-    def __init__(self):
-        if "eon_nodes" not in self.__dict__:
-            self.eon_nodes = list()
-
-    def __str__(self):
-        display = ""
-        for eon in self.eon_nodes:
-            display += "%s" % (eon)
-        return display
-
-    def add_eon(self, eon):
-        # Remove any existing EoN
-        old_eon = self.find_eon(eon.birth_topic)
-        if old_eon is not None:
-            self.eon_nodes.remove(old_eon)
-        self.eon_nodes.append(eon)
-
-    def find_eon(self, topic):
-        for eon in self.eon_nodes:
-            if (eon.birth_topic.namespace == topic.namespace and
-                    eon.birth_topic.group_id == topic.group_id and
-                    eon.birth_topic.edge_node_id == topic.edge_node_id):
-                return eon
-        return None
-
-    def find_dev(self, topic):
-        assert topic.device_id is not None, \
-                "Invalid device topic: %s" % (topic)
-        eon = self.find_eon(topic)
-        if eon is None:
-            return None
-        for dev in eon.devices:
-            if dev.birth_topic.device_id == topic.device_id:
-                return dev
-        return None
 
 
 ######################################################################
@@ -479,13 +354,16 @@ class SPShell(cmd2.Cmd):
         mqtt_if = MQTTInterface()
         mqtt_if.publish(str(topic), byte_array, 0, False)
 
-    def logger_list(self, args):
+    @staticmethod
+    def logger_list(args):
         SPLogger.list()
 
-    def logger_stop(self, args):
+    @staticmethod
+    def logger_stop(args):
         SPLogger.stop(args.logger_id)
 
-    def logger_spid(self, args):
+    @staticmethod
+    def logger_spid(args):
         sparkplug_id = args.sparkplug_id.split("/")
         cmd = "+"
         if len(sparkplug_id) == 2:
@@ -507,127 +385,20 @@ class SPShell(cmd2.Cmd):
                                                      'with a sparkplug_id')
     parser_logger_spid.add_argument('sparkplug_id',
                                     help='Id of EoN or device as returned by command "list"')
-    parser_logger_spid.set_defaults(func=logger_spid)
+    parser_logger_spid.set_defaults(func=logger_spid.__func__)
 
     parser_logger_list = subparser_logger.add_parser('list', help='List active loggers and id to stop them')
-    parser_logger_list.set_defaults(func=logger_list)
+    parser_logger_list.set_defaults(func=logger_list.__func__)
 
     parser_logger_stop = subparser_logger.add_parser('stop', help='Stop an active logger')
     parser_logger_stop.add_argument('logger_id',
                                     help='Logger id to stop as returned by command "logger list"')
-    parser_logger_stop.set_defaults(func=logger_stop)
+    parser_logger_stop.set_defaults(func=logger_stop.__func__)
 
     @cmd2.with_argparser(parser_logger)
     def do_logger(self, args):
         """Log payloads related to a topic or a sparkplug id"""
-        args.func(self, args)
-
-
-class MQTTInterface(threading.Thread):
-    __instance = None
-
-    def __new__(cls):
-        if MQTTInterface.__instance is None:
-            MQTTInterface.__instance = object.__new__(cls)
-        return MQTTInterface.__instance
-
-    def __init__(self):
-        if "server" in self.__dict__:
-            return
-
-        super(MQTTInterface, self).__init__()
-        self.server = None
-        self.stop_request = threading.Event()
-
-        self.client = mqtt.Client("enki_%d" % os.getpid(), 1883, 60)
-        self.client.user_data_set(self)
-        self.client.on_connect = self.on_connect
-        self.client.on_message = self.on_message
-        self.client.username_pw_set(myUsername, myPassword)
-        self.subscribed_topics = ["spBv1.0/#"]
-        self.forwarded_topics = dict()
-
-    def set_server(self, server):
-        self.server = server
-
-    def get_subscribed_topics(self):
-        return self.subscribed_topics
-
-    def subscribe(self, topic):
-        if topic not in self.subscribed_topics:
-            self.client.subscribe(topic)
-            self.subscribed_topics.append(topic)
-
-    def unsubscribe(self, topic):
-        if topic in self.subscribed_topics:
-            self.client.unsubscribe(topic)
-            self.subscribed_topics.remove(topic)
-
-    def publish(self, topic, byte_array, qos, retain):
-        self.client.publish(topic, byte_array, qos, retain)
-
-    def forward_topic(self, topic, q_io):
-        """Forward messages received on topic to queue"""
-        self.forwarded_topics[topic] = q_io
-
-    def stop_forwarding(self, topic):
-        """Stop forwarding messages received on topic"""
-        self.forwarded_topics.pop(topic)
-
-    @staticmethod
-    def on_connect(client, userdata, flags, rc):
-        """ The callback for when the client receives a CONNACK response from the server."""
-        if rc == 0:
-            print("Connected with result code "+str(rc))
-        else:
-            print("Failed to connect with result code "+str(rc))
-            sys.exit()
-
-        # Subscribing in on_connect() means that if we lose the connection and
-        # reconnect then subscriptions will be renewed.
-        for topic in userdata.subscribed_topics:
-            client.subscribe(topic)
-
-    @staticmethod
-    def on_message(client, userdata, msg):
-        """The callback for when a PUBLISH message is received from the server."""
-        topic = SparkplugTopic(msg.topic)
-
-        sp_net = SparkplugNetwork()
-        inboundPayload = sparkplug_b_pb2.Payload()
-        inboundPayload.ParseFromString(msg.payload)
-        if topic.is_nbirth():
-            print("Register node birth: %s" % (topic))
-            node = EdgeNode(topic, inboundPayload.metrics)
-            sp_net.add_eon(node)
-        elif topic.is_dbirth():
-            print("Register device birth: %s" % (topic))
-            eon = sp_net.find_eon(topic)
-            assert eon is not None, "Device birth before Node birth is not allowed"
-            dev = SPDev(topic, inboundPayload.metrics)
-            eon.add_dev(dev)
-        elif topic.is_ddata():
-            dev = sp_net.find_dev(topic)
-            if dev is None:
-                print("Unknown device for topic : %s" % (topic))
-
-        loggers = SPLogger.get_all_matching_topic(msg.topic)
-        for l in loggers:
-            l.process_payload(inboundPayload)
-
-        for (topic, q_io) in userdata.forwarded_topics.items():
-            if mqtt.topic_matches_sub(topic, msg.topic):
-                q_io.put(msg)
-
-    def join(self, timeout=None):
-        self.stop_request.set()
-        super(MQTTInterface, self).join(timeout)
-
-    def run(self):
-        self.client.connect(self.server, 1883, 60)
-
-        while not self.stop_request.isSet():
-            self.client.loop()
+        args.func(args)
 
 
 ######################################################################

@@ -119,6 +119,7 @@ class MQTTInterface(threading.Thread):
     def join(self, timeout=None):
         self.stop_request.set()
         super().join(timeout)
+        MQTTInterface.__instance = None
 
     def run(self):
         self.client.connect(self.server, 1883, 60)

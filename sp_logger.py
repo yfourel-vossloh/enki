@@ -3,7 +3,7 @@ import os
 import datetime
 import pathlib
 import paho.mqtt.client as mqtt
-from mqtt_if import MQTTInterface
+import mqtt_if as mqtt_interface
 
 
 class SPLogger():
@@ -28,7 +28,7 @@ class SPLogger():
 
     def __init__(self, topic):
         self.subscribed_topic = topic
-        mqtt_if = MQTTInterface()
+        mqtt_if = mqtt_interface.MQTTInterface()
         mqtt_if.subscribe(topic)
         topic_sanitized = topic.replace("+", "").replace("#", "").replace("//", "/").rstrip("/")
         self.path = "logs_" + self.__timestamp + "/" + topic_sanitized + ".txt"
@@ -63,7 +63,7 @@ class SPLogger():
     def stop_instance(self):
         """Stop logger."""
         self.log_fd.close()
-        mqtt_if = MQTTInterface()
+        mqtt_if = mqtt_interface.MQTTInterface()
         mqtt_if.unsubscribe(self.subscribed_topic)
         self.__loggers.remove(self)
 

@@ -12,6 +12,7 @@ from sp_topic import SparkplugTopic
 from sp_logger import SPLogger
 from mqtt_if import MQTTInterface
 from sp_network import SparkplugNetwork
+from sp_id import SparkplugId
 
 # Application Variables
 int_value_types = [MetricDataType.Int8,
@@ -364,19 +365,12 @@ class SPShell(cmd2.Cmd):
 
     @staticmethod
     def logger_spid(args):
-        sparkplug_id = args.sparkplug_id.split("/")
-        cmd = "+"
-        if len(sparkplug_id) == 2:
-            dev_id = None
-        elif len(sparkplug_id) == 3:
-            dev_id = sparkplug_id[2]
-        else:
+        sparkplug_id = SparkplugId.create_from_str(args.sparkplug_id)
+        if sparkplug_id is None:
             print("Error: invalid sparkplug_id: %s" % (args.sparkplug_id))
             return
-        group_id = sparkplug_id[0]
-        eon_id = sparkplug_id[1]
 
-        topic = SparkplugTopic.create(group_id, cmd, eon_id, dev_id)
+        topic = sparkplug_id.get_topic("+")
         logger = SPLogger(str(topic))
 
     parser_logger = cmd2.Cmd2ArgumentParser()

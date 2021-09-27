@@ -14,7 +14,7 @@ import sp_logger
 MYUSERNAME = "admin"
 MYPASSWORD = "changeme"
 
-class MQTTInterface(threading.Thread):
+class MQTTInterface(object):
     """MQTT Interface management."""
     __instance = None
 
@@ -29,7 +29,6 @@ class MQTTInterface(threading.Thread):
 
         super().__init__()
         self.server = None
-        self.stop_request = threading.Event()
 
         self.client = mqtt.Client("enki_%d" % os.getpid(), 1883, 60)
         self.client.user_data_set(self)
@@ -117,12 +116,9 @@ class MQTTInterface(threading.Thread):
                 q_io.put(msg)
 
     def join(self, timeout=None):
-        self.stop_request.set()
-        super().join(timeout)
+        self.client.loop_stop()
         MQTTInterface.__instance = None
 
-    def run(self):
+    def start(self):
         self.client.connect(self.server, 1883, 60)
-
-        while not self.stop_request.isSet():
-            self.client.loop()
+        self.client.loop_start()

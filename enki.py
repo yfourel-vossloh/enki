@@ -308,10 +308,13 @@ class SPShell(cmd2.Cmd):
 
     def forge_payload_from_metric(self, payload, metric):
         """Add a user modified version of metric to payload"""
-        simple_datatypes = int_value_types + long_value_types + boolean_value_types
+        simple_datatypes = int_value_types + long_value_types
+        simple_datatypes += boolean_value_types
         if metric.datatype in simple_datatypes:
-            value = self.prompt_user_simple_datatype(metric.name, metric.datatype)
-            addMetric(payload, None, metric.alias, metric.datatype, value)
+            value = self.prompt_user_simple_datatype(metric.name,
+                                                     metric.datatype)
+            addMetric(payload, metric.name, metric.alias, metric.datatype,
+                      value)
         elif metric.datatype == MetricDataType.DataSet:
             self.forge_dataset_metric(payload, metric)
         else:

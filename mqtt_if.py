@@ -73,9 +73,7 @@ class MQTTInterface(object):
     @staticmethod
     def on_connect(client, userdata, flags, ret):
         """The callback for when the client receives a CONNACK response from the server."""
-        if ret == 0:
-            print("Connected with result code "+str(ret))
-        else:
+        if ret != 0:
             print("Failed to connect with result code "+str(ret))
             sys.exit()
 

@@ -65,6 +65,22 @@ class SparkplugId:
             msg_type = "DDATA"
         return self.get_topic(msg_type)
 
+    def get_birth_topic(self):
+        """Return xBIRTH topic for instance."""
+        if self.dev_id is None:
+            msg_type = "NBIRTH"
+        else:
+            msg_type = "DBIRTH"
+        return self.get_topic(msg_type)
+
+    def get_death_topic(self):
+        """Return xDEATH topic for instance."""
+        if self.dev_id is None:
+            msg_type = "NDEATH"
+        else:
+            msg_type = "DDEATH"
+        return self.get_topic(msg_type)
+
     def __str__(self):
         if self.dev_id is None:
             string = "%s/%s" % (self.group_id, self.eon_id)

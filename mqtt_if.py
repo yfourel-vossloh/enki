@@ -102,8 +102,20 @@ class MQTTInterface(object):
             eon.add_dev(dev)
         elif topic.is_ddata():
             dev = sp_net.find_dev(topic)
+            eon = sp_net.find_eon(topic)
             if dev is None:
                 print("Unknown device for topic : %s" % (topic))
+            else:
+                for metric in payload.metrics:
+                    dev_metric = dev.get_metric(metric.name)
+                    if dev_metric:
+                        dev.update_metric(metric)
+                        print("DDATA from device %s/%s/%s" % (eon.birth_topic.group_id,
+                                                              eon.birth_topic.edge_node_id,
+                                                              dev.birth_topic.device_id))
+                        dev.print_metric(dev_metric)
+                    else:
+                        print("No match for metric in device")
 
         loggers = sp_logger.SPLogger.get_all_matching_topic(msg.topic)
         for logger in loggers:

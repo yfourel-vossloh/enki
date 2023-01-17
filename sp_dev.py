@@ -1,5 +1,15 @@
 """Manages Edge Of Netork or Devices."""
 
+from sparkplug_b import MetricDataType
+
+def is_same_metric(metric_a, metric_b):
+    """Helper function to compare metrics
+    
+    The comparison is made on the name if present, or on the alias.
+    """
+    return (((metric_a.name and metric_b.name and metric_a.name == metric_b.name)
+             or (not metric_a.name and not metric_b.name and metric_a.alias == metric_b.alias))
+            and metric_a.datatype == metric_b.datatype)
 
 class SPDev:
     """Base class for Edge of Network Nodes or Devices"""
@@ -23,6 +33,45 @@ class SPDev:
 
         self.metrics.append(new_metric)
 
+    def update_metric(self, new_metric):
+        """Update a device metric
+        
+        The registered metric's value is updated with a new value received from
+        the device.
+        """
+        for metric in self.metrics:
+            if is_same_metric(metric, new_metric):
+                metric.timestamp = new_metric.timestamp
+                if metric.datatype == MetricDataType.Int8:
+                    metric.int_value = new_metric.int_value
+                elif metric.datatype == MetricDataType.Int16:
+                    metric.int_value = new_metric.int_value
+                elif metric.datatype == MetricDataType.Int32:
+                    metric.int_value = new_metric.int_value
+                elif metric.datatype == MetricDataType.Int64:
+                    metric.long_value = new_metric.long_value
+                elif metric.datatype == MetricDataType.UInt8:
+                    metric.int_value = new_metric.int_value
+                elif metric.datatype == MetricDataType.UInt16:
+                    metric.int_value = new_metric.int_value
+                elif metric.datatype == MetricDataType.UInt32:
+                    metric.long_value = new_metric.long_value
+                elif metric.datatype == MetricDataType.UInt64:
+                    metric.long_value = new_metric.long_value
+                elif metric.datatype == MetricDataType.Float:
+                    metric.float_value = new_metric.float_value
+                elif metric.datatype == MetricDataType.Double:
+                    metric.double_value = new_metric.double_value
+                elif metric.datatype == MetricDataType.Boolean:
+                    metric.boolean_value = new_metric.boolean_value
+                elif metric.datatype == MetricDataType.String:
+                    metric.string_value = new_metric.string_value
+                elif metric.datatype == MetricDataType.DateTime:
+                    metric.long_value = new_metric.long_value
+                elif metric.datatype == MetricDataType.Text:
+                    metric.string_value = new_metric.string_value
+                break
+                               
     def get_metric(self, name):
         """Get metric object from its name"""
         for metric in self.metrics:
@@ -53,7 +102,7 @@ class SPDev:
     def get_metric_str(self, req_metric):
         """Return string describing metric if it is known to Device"""
         for metric in self.metrics:
-            if metric.alias == req_metric.alias:
+            if is_same_metric(metric, req_metric):
                 return "%s: %s" % (metric.name, self.get_metric_val_str(req_metric))
         return None
 

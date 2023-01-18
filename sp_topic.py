@@ -46,6 +46,10 @@ class SparkplugTopic:
         """True for device data topics."""
         return self.message_type == "DDATA"
 
+    def is_ddeath(self):
+        """True for device death topics."""
+        return self.message_type == "DDEATH"
+
     def eon_id(self):
         """Return Edge of Network Node ID."""
         return self.edge_node_id

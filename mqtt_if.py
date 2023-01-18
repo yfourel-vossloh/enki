@@ -110,12 +110,16 @@ class MQTTInterface(object):
                     dev_metric = dev.get_metric(metric.name)
                     if dev_metric:
                         dev.update_metric(metric)
-                        print("DDATA from device %s/%s/%s" % (eon.birth_topic.group_id,
-                                                              eon.birth_topic.edge_node_id,
-                                                              dev.birth_topic.device_id))
+                        print("DDATA from device %s" % dev.get_short_handle())
                         dev.print_metric(dev_metric)
                     else:
                         print("No match for metric in device")
+        elif topic.is_ddeath():
+            dev = sp_net.find_dev(topic)
+            eon = sp_net.find_eon(topic)
+            if dev is not None and eon is not None:
+                print("Device %s died" % dev.get_short_handle())
+                eon.remove_dev(dev)
 
         loggers = sp_logger.SPLogger.get_all_matching_topic(msg.topic)
         for logger in loggers:

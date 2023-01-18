@@ -115,6 +115,12 @@ class SPDev:
         else:
             print(metric_str)
 
+    def get_short_handle(self):
+        """Returns a string representing the device."""
+        return "%s/%s/%s" % (self.birth_topic.group_id,
+                             self.edge_node_id,
+                             self.birth_topic.device_id)
+
 
 class EdgeNode(SPDev):
     """Edge of Network Node."""
@@ -124,5 +130,11 @@ class EdgeNode(SPDev):
 
     def add_dev(self, device):
         """Adds a device to EdgeNode."""
-        # TODO: check if device does not already exist.
-        self.devices.append(device)
+        if device in self.devices:
+            print("Device %s already exists" % dev.get_short_handle())
+        else:
+            self.devices.append(device)
+
+    def remove_dev(self, device):
+        """Removes a device from EdgeNode."""
+        self.devices.remove(device)

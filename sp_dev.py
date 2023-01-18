@@ -137,4 +137,4 @@ class EdgeNode(SPDev):
 
     def remove_dev(self, device):
         """Removes a device from EdgeNode."""
-        self.devices = [dev for dev in self.devices if dev != device]
+        self.devices.remove(device)

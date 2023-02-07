@@ -15,22 +15,27 @@ When launched, the `enki.py` script gives access to a shell with commands to man
 [![asciicast](https://asciinema.org/a/lKGTwxDlLOYwGtsF1kecBLfa0.svg)](https://asciinema.org/a/lKGTwxDlLOYwGtsF1kecBLfa0)
 
 # Docker image
-##
-## Build
-```
-docker build -t enki .
-```
-If you do not want t build the docker image, you can pull it from container registry.
-## Run
-If you have built the image:
-```
-docker run -it --rm enki --server <mqtt broker hostname>
-```
-
-Pull the image from registry:
+## Registry image
 ```
 docker run -it --rm ghcr.io/siemaapplications/enki:<tag> --server <mqtt broker hostname>
 ```
-> :bulb: in the above commands, replace `<tag>` and `<mqtt broker hostname>` with the appropriate values.  
-> `mqtt broker hostname` should be the ip of the docker network interface if a broker is running on the host:  
-> `ip -4 -br a s docker0 | awk '{print $3}' | cut -d/ -f1`  
+
+## Build image
+```
+docker build -t enki .
+docker run -it --rm enki --server <mqtt broker hostname>
+```
+
+## mqtt broker
+`enki` must connect to a broker which is specified on the command line with the `--server` argument (eg `test.mosquitto.org`).
+
+If a broker is running on the host computer, the ip of the docker network interface can be supplied to `--server`:
+```
+docker run -it --rm ghcr.io/siemaapplications/enki:<tag> --server $(ip -4 -br a s docker0 | awk '{print $3}' | cut -d/ -f1)
+```
+
+However, if the broker is hosted in a container, the enki instance must be connected to the network hosting the broker:
+```
+docker run -it --rm --network <docker network name> ghcr.io/siemaapplications/enki:<tag> --server <container instance name>
+```
+Where `<docker network name>` can be seen in the output of `docker network ls` command and `<container instance name>` in the output of `docker ps`.

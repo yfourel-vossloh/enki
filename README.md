@@ -6,7 +6,7 @@ Enki is the Sumerian god of water, knowledge, mischiefs, crafts and creations.
 
 ## Running
 ```
-export PYTHONPATH=${PYTHONPATH}:$(pwd)/tahu/client_libraries/python
+export PYTHONPATH=${PYTHONPATH}:$(pwd)/tahu/python/core/
 ./enki.py
 ```
 When launched, the `enki.py` script gives access to a shell with commands to manage topics subscriptions, list EoN and devices, craft metrics into payload. Type `help` to see the list of commands available.

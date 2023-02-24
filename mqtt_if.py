@@ -107,13 +107,14 @@ class MQTTInterface(object):
                 print("Unknown device for topic : %s" % (topic))
             else:
                 for metric in payload.metrics:
-                    dev_metric = dev.get_metric(metric.name)
+                    dev_metric = dev.get_metric(metric.name, metric.alias)
                     if dev_metric:
                         dev.update_metric(metric)
                         print("DDATA from device %s" % dev.get_short_handle())
                         dev.print_metric(dev_metric)
                     else:
-                        print("No match for metric in device")
+                        print(f"No match for metric {metric.name}/{metric.alias} "
+                              f"in device {dev.get_short_handle()}")
         elif topic.is_ddeath():
             dev = sp_net.find_dev(topic)
             eon = sp_net.find_eon(topic)

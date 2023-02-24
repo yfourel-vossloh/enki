@@ -71,11 +71,13 @@ class SPDev:
                 elif metric.datatype == MetricDataType.Text:
                     metric.string_value = new_metric.string_value
                 break
-                               
-    def get_metric(self, name):
-        """Get metric object from its name"""
+
+    def get_metric(self, name, alias=None):
+        """Get metric object from its name or alias"""
         for metric in self.metrics:
             if metric.name == name:
+                return metric
+            elif alias is not None and metric.alias == alias:
                 return metric
         return None
 

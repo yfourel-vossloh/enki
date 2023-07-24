@@ -7,7 +7,7 @@ import cmd2
 
 
 import sparkplug_b_pb2
-from sparkplug_b import MetricDataType, addMetric
+from sparkplug_b import MetricDataType, addMetric, initDatasetMetric
 from sp_topic import SparkplugTopic
 from sp_logger import SPLogger
 from mqtt_if import MQTTInterface

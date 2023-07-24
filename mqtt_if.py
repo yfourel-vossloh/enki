@@ -135,5 +135,11 @@ class MQTTInterface(object):
         MQTTInterface.__instance = None
 
     def start(self):
+        """Connect to the broker and start mqtt loop."""
         self.client.connect(self.server, 1883, 60)
         self.client.loop_start()
+
+    def stop(self):
+        """Stop loop and disconnect from the broker."""
+        self.client.loop_stop()
+        self.client.disconnect()

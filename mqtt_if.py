@@ -29,6 +29,7 @@ class MQTTInterface(object):
 
         super().__init__()
         self.server = None
+        self.port = None
 
         self.client = mqtt.Client("enki_%d" % os.getpid(), 1883, 60)
         self.client.user_data_set(self)
@@ -38,9 +39,10 @@ class MQTTInterface(object):
         self.subscribed_topics = ["spBv1.0/#"]
         self.forwarded_topics = {}
 
-    def set_server(self, server):
-        """Set mqtt server address."""
+    def set_server(self, server, port):
+        """Set mqtt server address and port."""
         self.server = server
+        self.port = port
 
     def get_subscribed_topics(self):
         """Get list of topics subscribed to."""
@@ -111,7 +113,7 @@ class MQTTInterface(object):
                     if dev_metric:
                         dev.update_metric(metric)
                         print("DDATA from device %s" % dev.get_short_handle())
-                        dev.print_metric(dev_metric)
+                        dev.print_metric(metric)
                     else:
                         print(f"No match for metric {metric.name}/{metric.alias} "
                               f"in device {dev.get_short_handle()}")
@@ -136,7 +138,7 @@ class MQTTInterface(object):
 
     def start(self):
         """Connect to the broker and start mqtt loop."""
-        self.client.connect(self.server, 1883, 60)
+        self.client.connect(self.server, self.port, 60)
         self.client.loop_start()
 
     def stop(self):

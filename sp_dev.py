@@ -204,8 +204,6 @@ class SPDev:
         """Return string describing metric if it is known to Device"""
         for metric in self.metrics:
             if is_same_metric(metric, req_metric):
-                #if metric.datatype != MetricDataType.Bytes:
-                #    return str(req_metric)
                 return "{}[{}]:\n{}\n\tvalue: {}\n".format(req_metric.name,
                                                            req_metric.alias,
                                                            get_common_info_str(req_metric),

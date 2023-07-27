@@ -195,8 +195,7 @@ class SPShell(cmd2.Cmd):
 
         if sp_dev is not None:
             for m in sp_dev.metrics:
-                print("%s[%d]: %s" % (m.name, m.alias, datatype_to_str(m.datatype)))
-                print(m)
+                sp_dev.print_metric(m)
 
     def complete_metrics(self, text, line, begidx, endidx):
         sp_net = SparkplugNetwork()
@@ -403,12 +402,14 @@ class SPShell(cmd2.Cmd):
 ######################################################################
 def main():
     parser = argparse.ArgumentParser(description="View and manipulate sparkplug payload")
-    parser.add_argument('--server',
+    parser.add_argument('--host',
                         help='MQTT broker address', default='localhost')
+    parser.add_argument('--port',
+                        help='MQTT broker port', default=1883, type=int)
     args = parser.parse_args()
 
     mqtt_if = MQTTInterface()
-    mqtt_if.set_server(args.server)
+    mqtt_if.set_server(args.host, args.port)
     mqtt_if.start()
     time.sleep(.1)
 

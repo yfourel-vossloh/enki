@@ -1,6 +1,139 @@
 """Manages Edge Of Netork or Devices."""
 
+import ctypes
 from sparkplug_b import MetricDataType
+
+def ctype_converter(ctype):
+    return lambda value: ctype(value).value
+
+_FROM_DTYPE_CONVERTERS = {
+    MetricDataType.Int8: ctype_converter(ctypes.c_int8),
+    MetricDataType.Int16: ctype_converter(ctypes.c_int16),
+    MetricDataType.Int32: ctype_converter(ctypes.c_int32),
+    MetricDataType.Int64: ctype_converter(ctypes.c_int64),
+    MetricDataType.UInt8: ctype_converter(ctypes.c_uint8),
+    MetricDataType.UInt16: ctype_converter(ctypes.c_uint16),
+    MetricDataType.UInt32: ctype_converter(ctypes.c_uint32),
+    MetricDataType.UInt64: ctype_converter(ctypes.c_uint64),
+    MetricDataType.Float: ctype_converter(ctypes.c_float),
+    MetricDataType.Double: ctype_converter(ctypes.c_double),
+    MetricDataType.Boolean: bool,
+    MetricDataType.String: str,
+    MetricDataType.DateTime: ctype_converter(ctypes.c_uint64),
+    MetricDataType.Text: str,
+    MetricDataType.UUID: str,
+    MetricDataType.Bytes: bytearray,
+    MetricDataType.File: bytearray
+}
+
+_TO_DTYPES_CONVERTERS = {
+    MetricDataType.Int8: ctype_converter(ctypes.c_uint32),
+    MetricDataType.Int16: ctype_converter(ctypes.c_uint32),
+    MetricDataType.Int32: ctype_converter(ctypes.c_uint32),
+    MetricDataType.Int64: ctype_converter(ctypes.c_uint64),
+    MetricDataType.UInt8: ctype_converter(ctypes.c_uint32),
+    MetricDataType.UInt16: ctype_converter(ctypes.c_uint32),
+    MetricDataType.UInt32: ctype_converter(ctypes.c_uint32),
+    MetricDataType.UInt64: ctype_converter(ctypes.c_uint64),
+    MetricDataType.Float: ctype_converter(ctypes.c_float),
+    MetricDataType.Double: ctype_converter(ctypes.c_double),
+    MetricDataType.Boolean: bool,
+    MetricDataType.String: str,
+    MetricDataType.DateTime: ctype_converter(ctypes.c_uint64),
+    MetricDataType.Text: str,
+    MetricDataType.UUID: str,
+    MetricDataType.Bytes: bytearray,
+    MetricDataType.File: bytearray
+}
+
+_DTYPE_TO_VAR = {
+    MetricDataType.Int8: "int_value",
+    MetricDataType.Int16: "int_value",
+    MetricDataType.Int32: "int_value",
+    MetricDataType.Int64: "long_value",
+    MetricDataType.UInt8: "int_value",
+    MetricDataType.UInt16: "int_value",
+    MetricDataType.UInt32: "int_value",
+    MetricDataType.UInt64: "long_value",
+    MetricDataType.Float: "float_value",
+    MetricDataType.Double: "double_value",
+    MetricDataType.Boolean: "boolean_value",
+    MetricDataType.String: "string_value",
+    MetricDataType.DateTime: "long_value",
+    MetricDataType.Text: "string_value",
+    MetricDataType.UUID: "string_value",
+    MetricDataType.Bytes: "bytes_value",
+    MetricDataType.File: "bytes_value",
+    MetricDataType.Template: "template_value"
+}
+
+DATATYPES_STR = {
+    MetricDataType.Int8: "Int8",
+    MetricDataType.Int16: "Int16",
+    MetricDataType.Int32: "Int32",
+    MetricDataType.Int64: "Int64",
+    MetricDataType.UInt8: "UInt8",
+    MetricDataType.UInt16: "UInt16",
+    MetricDataType.UInt32: "Uint32",
+    MetricDataType.UInt64: "Uint64",
+    MetricDataType.Float: "Float",
+    MetricDataType.Double: "Double",
+    MetricDataType.Boolean: "Boolean",
+    MetricDataType.String: "String",
+    MetricDataType.DateTime: "DateTime",
+    MetricDataType.Text: "Text",
+    MetricDataType.UUID: "UUID",
+    MetricDataType.Bytes: "Bytes",
+    MetricDataType.File: "File",
+    MetricDataType.Template: "Template",
+    MetricDataType.DataSet: "DataSet"
+}
+
+def get_typed_value(datatype, container):
+    if datatype in _DTYPE_TO_VAR:
+        value = getattr(container, _DTYPE_TO_VAR[datatype])
+        if datatype in _FROM_DTYPE_CONVERTERS:
+            converter = _FROM_DTYPE_CONVERTERS[datatype]
+            value = converter(value)
+        return value
+    return None
+
+def get_bytearray_str(bytes_array):
+    size = len(bytes_array)
+    res = f"Bytes array of length {size}"
+    if size:
+        excerpt = bytes_array[0:10]
+        excerpt = "[" + " ".join([f"0x{val:02X}" for val in excerpt])
+        if size > 10:
+            excerpt += " ..."
+        excerpt += "]"
+        res = res + " " + excerpt
+    return res
+    
+def get_typed_value_str(datatype, container):
+    if datatype == MetricDataType.Bytes:
+        return get_bytearray_str(container.bytes_value)
+    return str(get_typed_value(datatype, container))
+
+def get_property_value_str(prop):
+    prop_type = DATATYPES_STR.get(prop.type, "Unknown")
+    prop_value = get_typed_value_str(prop.type, prop)
+    return f"\t\t\ttype: {prop_type}\n\t\t\tvalue: {prop_value}"
+    
+def get_common_info_str(metric):
+    datatype_str = DATATYPES_STR.get(metric.datatype, "Unknown")
+    res = "\ttimestamp: {}\n\tdatatype: {}".format(metric.timestamp,
+                                                   datatype_str)
+    if len(metric.properties.keys):
+        res = res + "\n\tproperties:"
+        props = metric.properties
+        for idx in range(len(props.keys)):
+            prop_name = props.keys[idx]
+            prop_value = get_property_value_str(props.values[idx])
+            res = res + f"\n\t\t{prop_name}:\n{prop_value}"
+    else:
+        res = res + "\n\tproperties: None"
+    return res
 
 def is_same_metric(metric_a, metric_b):
     """Helper function to compare metrics
@@ -16,7 +149,7 @@ class SPDev:
     def __init__(self, birth_topic, metrics):
         self.birth_topic = birth_topic
         self.edge_node_id = birth_topic.edge_node_id
-        self.metrics = metrics
+        self.metrics = list(metrics)
 
     def __repr__(self):
         return "%s(\"%s\")" % (type(self).__name__, self.birth_topic)
@@ -39,38 +172,9 @@ class SPDev:
         The registered metric's value is updated with a new value received from
         the device.
         """
-        for metric in self.metrics:
+        for idx, metric in enumerate(self.metrics):
             if is_same_metric(metric, new_metric):
-                metric.timestamp = new_metric.timestamp
-                if metric.datatype == MetricDataType.Int8:
-                    metric.int_value = new_metric.int_value
-                elif metric.datatype == MetricDataType.Int16:
-                    metric.int_value = new_metric.int_value
-                elif metric.datatype == MetricDataType.Int32:
-                    metric.int_value = new_metric.int_value
-                elif metric.datatype == MetricDataType.Int64:
-                    metric.long_value = new_metric.long_value
-                elif metric.datatype == MetricDataType.UInt8:
-                    metric.int_value = new_metric.int_value
-                elif metric.datatype == MetricDataType.UInt16:
-                    metric.int_value = new_metric.int_value
-                elif metric.datatype == MetricDataType.UInt32:
-                    metric.long_value = new_metric.long_value
-                elif metric.datatype == MetricDataType.UInt64:
-                    metric.long_value = new_metric.long_value
-                elif metric.datatype == MetricDataType.Float:
-                    metric.float_value = new_metric.float_value
-                elif metric.datatype == MetricDataType.Double:
-                    metric.double_value = new_metric.double_value
-                elif metric.datatype == MetricDataType.Boolean:
-                    metric.boolean_value = new_metric.boolean_value
-                elif metric.datatype == MetricDataType.String:
-                    metric.string_value = new_metric.string_value
-                elif metric.datatype == MetricDataType.DateTime:
-                    metric.long_value = new_metric.long_value
-                elif metric.datatype == MetricDataType.Text:
-                    metric.string_value = new_metric.string_value
-                break
+                self.metrics[idx] = new_metric
 
     def get_metric(self, name, alias=None):
         """Get metric object from its name or alias"""
@@ -96,16 +200,14 @@ class SPDev:
                                    device)
         return topic
 
-    @classmethod
-    def get_metric_val_str(cls, metric):
-        """Use google's protobuf backend to print metric."""
-        return "%s" % (metric)
-
     def get_metric_str(self, req_metric):
         """Return string describing metric if it is known to Device"""
         for metric in self.metrics:
             if is_same_metric(metric, req_metric):
-                return "%s: %s" % (metric.name, self.get_metric_val_str(req_metric))
+                return "{}[{}]:\n{}\n\tvalue: {}\n".format(req_metric.name,
+                                                           req_metric.alias,
+                                                           get_common_info_str(req_metric),
+                                                           get_typed_value_str(req_metric.datatype, req_metric))
         return None
 
     def print_metric(self, metric):

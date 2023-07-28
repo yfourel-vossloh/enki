@@ -121,6 +121,30 @@ def add_value_to_element(element, value, type):
     else:
         print("Invalid: " + str(type))
 
+def get_dev_from_sparkplug_id(sparkplug_id):
+        sparkplug_id = sparkplug_id.split("/")
+
+        if len(sparkplug_id) == 2:
+            group_id = sparkplug_id[0]
+            cmd = "NCMD"
+            eon_id = sparkplug_id[1]
+            dev_id = None
+        elif len(sparkplug_id) == 3:
+            group_id = sparkplug_id[0]
+            cmd = "DCMD"
+            eon_id = sparkplug_id[1]
+            dev_id = sparkplug_id[2]
+        else:
+            return None
+
+        topic = SparkplugTopic.create(group_id, cmd, eon_id, dev_id)
+        sp_net = SparkplugNetwork()
+        if dev_id is None:
+            sp_dev = sp_net.find_eon(topic)
+        else:
+            sp_dev = sp_net.find_dev(topic)
+
+        return sp_dev
 
 ######################################################################
 # SPShell
@@ -153,6 +177,27 @@ class SPShell(cmd2.Cmd):
                 else:
                     print("   * %s" % (dev.birth_topic.device_id))
 
+    def build_target_list(self, include_eon, include_dev):
+        res = []
+        sp_net = SparkplugNetwork()
+        for eon in sp_net.eon_nodes:
+            eon_id = f"{eon.birth_topic.group_id}/{eon.birth_topic.edge_node_id}"
+            if include_eon:
+                res.append(eon_id)
+            if include_dev:
+                for dev in eon.devices:
+                    res.append(f"{eon_id}/{dev.birth_topic.device_id}")
+        return res
+
+    def get_all_targets(self):
+        return self.build_target_list(include_eon=True, include_dev=True)
+
+    def get_all_eons(self):
+        return self.build_target_list(include_eon=True, include_dev=False)
+
+    def get_all_devices(self):
+        return self.build_target_list(include_eon=False, include_dev=True)
+
     def help_metrics(self):
         print("metrics <sparkplug_id>")
         print("  Show metrics available for an Edge of Network Node or a device")
@@ -162,56 +207,31 @@ class SPShell(cmd2.Cmd):
         print(" EoN format: <group_id>/<eon_id>")
         print(" Devices format: <group_id>/<eon_id>/<device_id>")
 
-    def do_metrics(self, *args):
-        cmd_args = shlex.split(args[0])
-        if len(cmd_args) == 0:
-            print("Error: Missing sparkplug_id.")
-            self.help_metrics()
-            return
+    metrics_parser = cmd2.Cmd2ArgumentParser()
+    metrics_parser.add_argument("sparkplug_id", choices_provider=get_all_targets)
 
-        sparkplug_id = cmd_args[0].split("/")
-        if len(sparkplug_id) == 2:
-            group_id = sparkplug_id[0]
-            cmd = "NCMD"
-            eon_id = sparkplug_id[1]
-            dev_id = None
-        elif len(sparkplug_id) == 3:
-            group_id = sparkplug_id[0]
-            cmd = "DCMD"
-            eon_id = sparkplug_id[1]
-            dev_id = sparkplug_id[2]
-        else:
-            print("Error: Invalid sparkplug_id: %s" % (cmd_args[0]))
-            self.help_metrics()
-            return
-
-        topic = SparkplugTopic.create(group_id, cmd, eon_id, dev_id)
-
-        sp_net = SparkplugNetwork()
-        if dev_id is None:
-            sp_dev = sp_net.find_eon(topic)
-        else:
-            sp_dev = sp_net.find_dev(topic)
-
+    @cmd2.with_argparser(metrics_parser)
+    def do_metrics(self, args):
+        sp_dev = get_dev_from_sparkplug_id(args.sparkplug_id)
         if sp_dev is not None:
             for m in sp_dev.metrics:
                 sp_dev.print_metric(m)
+        else:
+            print("Error: Invalid sparkplug_id: %s" % (args.sparkplug_id))
+            self.help_metrics()
 
-    def complete_metrics(self, text, line, begidx, endidx):
-        sp_net = SparkplugNetwork()
-        sp_id_list = []
-        for eon in sp_net.eon_nodes:
-            sp_id = "%s/%s" % (eon.birth_topic.group_id, eon.birth_topic.edge_node_id)
-            sp_id_list.append(sp_id)
-            for dev in eon.devices:
-                sp_id = "%s/%s/%s" % (eon.birth_topic.group_id,
-                                      eon.birth_topic.edge_node_id,
-                                      dev.birth_topic.device_id)
-                sp_id_list.append(sp_id)
-        index_dict = {
-            1: sp_id_list
-        }
-        return self.index_based_complete(text, line, begidx, endidx, index_dict=index_dict)
+    def get_metrics_of_sparkplug_id(self, sparkplug_id):
+        sp_dev = get_dev_from_sparkplug_id(sparkplug_id)
+        if sp_dev is not None:
+            return [m.name for m in sp_dev.metrics]
+        return []
+
+    def choices_dev_metrics_provider(self, arg_tokens):
+        if "metric_name" in arg_tokens and "sparkplug_id" in arg_tokens:
+            sparkplug_id = arg_tokens["sparkplug_id"]
+            if isinstance(sparkplug_id, list) and sparkplug_id:
+                return self.get_metrics_of_sparkplug_id(sparkplug_id[0])
+        return self.get_all_targets()
 
     def broker_list_topics(self, args):
         mqtt_if = MQTTInterface()
@@ -239,6 +259,23 @@ class SPShell(cmd2.Cmd):
     parser_unsub.add_argument('topic', help='Topic to unsubcribe from')
     parser_unsub.set_defaults(func=broker_unsub)
 
+    parser_print = cmd2.Cmd2ArgumentParser()
+    parser_print.add_argument("sparkplug_id", choices_provider=choices_dev_metrics_provider, help="EoN Id or Device Id")
+    parser_print.add_argument("metric_name", choices_provider=choices_dev_metrics_provider, help="Metric name")
+
+    @cmd2.with_argparser(parser_print)
+    def do_print(self, args):
+        """Prints the metric current value for a specific Edge of Network Node or device"""
+        sp_dev = get_dev_from_sparkplug_id(args.sparkplug_id)
+        if sp_dev is not None:
+            metric = sp_dev.get_metric(args.metric_name)
+            if metric is not None:
+                sp_dev.print_metric(metric)
+            else:
+                print(f"No metric '{args.metric_name}' belonging to '{args.sparkplug_id}'")
+        else:
+            print(f"Unknown sparkplug Id '{args.sparkplug_id}'")
+
     @cmd2.with_argparser(parser_broker)
     def do_broker(self, args):
         """Manage broker subscriptions"""
@@ -249,6 +286,7 @@ class SPShell(cmd2.Cmd):
     parser_send.add_argument('cmd_type', choices=send_cmd_choices,
                              help='Command type the payload is sent with')
     parser_send.add_argument('sparkplug_id',
+                             choices_provider=get_all_targets,
                              help='Id of EoN or device as returned by command "list"')
 
     def choose_metric(self, sp_dev):
@@ -322,31 +360,17 @@ class SPShell(cmd2.Cmd):
     @cmd2.with_argparser(parser_send)
     def do_send(self, args):
         """Forge a payload to send for a particular EoN or device"""
-        sp_net = SparkplugNetwork()
-        sparkplug_id = args.sparkplug_id.split("/")
-        if len(sparkplug_id) == 2:
-            group_id = sparkplug_id[0]
-            cmd = args.cmd_type
-            eon_id = sparkplug_id[1]
-            dev_id = None
-        elif len(sparkplug_id) == 3:
-            group_id = sparkplug_id[0]
-            cmd = args.cmd_type
-            eon_id = sparkplug_id[1]
-            dev_id = sparkplug_id[2]
-        else:
+        sp_dev = get_dev_from_sparkplug_id(args.sparkplug_id)
+
+        if sp_dev is None:
             print("Error: invalid sparkplug_id: %s" % (args.sparkplug_id))
             return
 
-        topic = SparkplugTopic.create(group_id, cmd, eon_id, dev_id)
-        if dev_id is None:
-            sp_dev = sp_net.find_eon(topic)
-        else:
-            sp_dev = sp_net.find_dev(topic)
-
-
+        topic = SparkplugTopic.create(sp_dev.birth_topic.group_id,
+                                      args.cmd_type,
+                                      sp_dev.birth_topic.edge_node_id,
+                                      sp_dev.birth_topic.device_id)
         payload = sparkplug_b_pb2.Payload()
-
         new_metric = True
         while new_metric:
             metric = self.choose_metric(sp_dev)

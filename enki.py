@@ -4,7 +4,7 @@ import shlex
 import time
 import argparse
 import cmd2
-
+import signal
 
 import sparkplug_b_pb2
 from sparkplug_b import MetricDataType, addMetric, initDatasetMetric
@@ -421,10 +421,15 @@ class SPShell(cmd2.Cmd):
         args.func(args)
 
 
+def handle_signal(sig_num, frame):
+    sys.exit(1)
+
 ######################################################################
 # Main Application
 ######################################################################
 def main():
+    signal.signal(signal.SIGHUP, handle_signal)
+    
     parser = argparse.ArgumentParser(description="View and manipulate sparkplug payload")
     parser.add_argument('--host',
                         help='MQTT broker address', default='localhost')

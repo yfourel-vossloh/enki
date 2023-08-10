@@ -2,6 +2,8 @@
 import os
 import sys
 import threading
+import uritools
+import ssl
 import paho.mqtt.client as mqtt
 
 import sparkplug_b_pb2
@@ -39,10 +41,25 @@ class MQTTInterface(object):
         self.subscribed_topics = ["spBv1.0/#"]
         self.forwarded_topics = {}
 
-    def set_server(self, server, port):
+    def set_server(self, server, port, certificate=None):
         """Set mqtt server address and port."""
         self.server = server
         self.port = port
+        if certificate is not None:
+            self.client.tls_set(certificate, tls_version=ssl.PROTOCOL_TLSv1_2)
+
+    def set_server_from_uri(self, server_uri, certificate=None):
+        """Set mqtt server from its URI."""
+        assert uritools.isuri(server_uri), f"{server_uri} is not a valid URI"
+        uri = uritools.urisplit(server_uri)
+        mqtts = uri.scheme == "mqtts"
+        if mqtts:
+            port = uri.getport(default=8883)
+        else:
+            port = uri.getport(default=1883)
+
+        host = str(uri.gethost())
+        self.set_server(host, port, certificate)
 
     def get_subscribed_topics(self):
         """Get list of topics subscribed to."""

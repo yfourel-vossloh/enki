@@ -20,5 +20,6 @@ pyperclip==1.8.2
 six==1.16.0
 traitlets==4.3.3
 typing-extensions==3.10.0.0
+uritools
 wcwidth==0.2.5
 zipp==3.4.1

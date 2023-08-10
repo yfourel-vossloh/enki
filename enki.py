@@ -430,10 +430,13 @@ def main():
                         help='MQTT broker address', default='localhost')
     parser.add_argument('--port',
                         help='MQTT broker port', default=1883, type=int)
+    parser.add_argument('--ca-certificate',
+                        help='Provide CA Certificate of broker. When this option is provided the '
+                        'connection will be made with TLS', default=None, type=str)
     args = parser.parse_args()
 
     mqtt_if = MQTTInterface()
-    mqtt_if.set_server(args.host, args.port)
+    mqtt_if.set_server(args.host, args.port, args.ca_certificate)
     mqtt_if.start()
     time.sleep(.1)
 

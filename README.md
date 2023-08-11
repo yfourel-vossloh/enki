@@ -17,7 +17,7 @@ When launched, the `enki.py` script gives access to a shell with commands to man
 # Docker image
 ## Registry image
 ```
-docker run -it --rm ghcr.io/siemaapplications/enki:v0.3.0 --host <mqtt broker hostname>
+docker run -it --rm ghcr.io/siemaapplications/enki:v0.3.1 --host <mqtt broker hostname>
 ```
 
 ## Build image
@@ -31,11 +31,11 @@ docker run -it --rm enki --host <mqtt broker hostname>
 
 If a broker is running on the host computer, the ip of the docker network interface can be supplied to `--host`:
 ```
-docker run -it --rm ghcr.io/siemaapplications/enki:v0.3.0 --host $(ip -4 -br a s docker0 | awk '{print $3}' | cut -d/ -f1)
+docker run -it --rm ghcr.io/siemaapplications/enki:v0.3.1 --host $(ip -4 -br a s docker0 | awk '{print $3}' | cut -d/ -f1)
 ```
 
 However, if the broker is hosted in a container, the enki instance must be connected to the network hosting the broker:
 ```
-docker run -it --rm --network <docker network name> ghcr.io/siemaapplications/enki:v0.3.0 --host <container instance name>
+docker run -it --rm --network <docker network name> ghcr.io/siemaapplications/enki:v0.3.1 --host <container instance name>
 ```
 Where `<docker network name>` can be seen in the output of `docker network ls` command and `<container instance name>` in the output of `docker ps`.

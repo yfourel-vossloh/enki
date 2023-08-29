@@ -6,6 +6,9 @@ from sparkplug_b import MetricDataType
 def ctype_converter(ctype):
     return lambda value: ctype(value).value
 
+def string_value_decorator(s):
+    return f"\"{str(s)}\" ({len(str(s))} bytes)"
+
 _FROM_DTYPE_CONVERTERS = {
     MetricDataType.Int8: ctype_converter(ctypes.c_int8),
     MetricDataType.Int16: ctype_converter(ctypes.c_int16),
@@ -18,10 +21,10 @@ _FROM_DTYPE_CONVERTERS = {
     MetricDataType.Float: ctype_converter(ctypes.c_float),
     MetricDataType.Double: ctype_converter(ctypes.c_double),
     MetricDataType.Boolean: bool,
-    MetricDataType.String: str,
+    MetricDataType.String: string_value_decorator,
     MetricDataType.DateTime: ctype_converter(ctypes.c_uint64),
-    MetricDataType.Text: str,
-    MetricDataType.UUID: str,
+    MetricDataType.Text: string_value_decorator,
+    MetricDataType.UUID: string_value_decorator,
     MetricDataType.Bytes: bytearray,
     MetricDataType.File: bytearray
 }

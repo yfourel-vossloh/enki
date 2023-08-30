@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import sys
 import shlex
 import time
@@ -428,7 +429,8 @@ def handle_signal(sig_num, frame):
 # Main Application
 ######################################################################
 def main():
-    signal.signal(signal.SIGHUP, handle_signal)
+    if os.name != "nt":
+        signal.signal(signal.SIGHUP, handle_signal)
     
     parser = argparse.ArgumentParser(description="View and manipulate sparkplug payload")
     parser.add_argument('--host',

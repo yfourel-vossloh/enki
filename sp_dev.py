@@ -1,5 +1,4 @@
 """Manages Edge Of Netork or Devices."""
-
 from sp_topic import SPTopic
 from sp_id import SPId
 from sp_helpers import MsgType

@@ -118,7 +118,8 @@ def get_dataset_str(dataset):
                    for (idx, col_type) in enumerate(dataset.types)])
             for row in dataset.rows]
     res = f"Dataset {len(dataset.rows)}x{len(dataset.types)}:\n"
-    res += f"\t\tColumns: {columns}\n\t\tRows: {rows}"
+    res += f"\t\tColumns: {columns}\n"
+    res += f"\t\tRows: {rows}"
     return res
     
 def get_typed_value_str(datatype, container):

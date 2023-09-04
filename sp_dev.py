@@ -109,12 +109,26 @@ def get_bytearray_str(bytes_array):
         excerpt += "]"
         res = res + " " + excerpt
     return res
+
+def get_dataset_str(dataset):
+    columns = [f"{col}({DATATYPES_STR[col_type]})"
+               for (col, col_type)
+               in zip(dataset.columns, dataset.types)]
+    rows = [tuple([get_typed_value_str(col_type, row.elements[idx])
+                   for (idx, col_type) in enumerate(dataset.types)])
+            for row in dataset.rows]
+    res = f"Dataset {len(dataset.rows)}x{len(dataset.types)}:\n"
+    res += f"\t\tColumns: {columns}\n"
+    res += f"\t\tRows: {rows}"
+    return res
     
 def get_typed_value_str(datatype, container):
     if hasattr(container, "is_null") and container.is_null:
         return "<Null>"
     if datatype == MetricDataType.Bytes:
         return get_bytearray_str(container.bytes_value)
+    if datatype == MetricDataType.DataSet:
+        return get_dataset_str(container.dataset_value)
     return str(get_typed_value(datatype, container))
 
 def get_property_value_str(prop):

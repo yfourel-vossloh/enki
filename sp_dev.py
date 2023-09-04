@@ -111,6 +111,8 @@ def get_bytearray_str(bytes_array):
     return res
     
 def get_typed_value_str(datatype, container):
+    if hasattr(container, "is_null") and container.is_null:
+        return "<Null>"
     if datatype == MetricDataType.Bytes:
         return get_bytearray_str(container.bytes_value)
     return str(get_typed_value(datatype, container))

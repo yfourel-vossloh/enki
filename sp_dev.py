@@ -53,7 +53,7 @@ _DTYPE_TO_VAR = {
     MetricDataType.Int64: "long_value",
     MetricDataType.UInt8: "int_value",
     MetricDataType.UInt16: "int_value",
-    MetricDataType.UInt32: "int_value",
+    MetricDataType.UInt32: "long_value",
     MetricDataType.UInt64: "long_value",
     MetricDataType.Float: "float_value",
     MetricDataType.Double: "double_value",

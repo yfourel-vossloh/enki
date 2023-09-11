@@ -1,22 +1,18 @@
 """Manage MQTT connexion, subscription and publishing."""
 import os
 import sys
-import threading
-import uritools
 import ssl
+import uritools
 import paho.mqtt.client as mqtt
 
-import sparkplug_b_pb2
-
-from sp_topic import SparkplugTopic
-from sp_dev import SPDev, EdgeNode
-from sp_network import SparkplugNetwork
-import sp_logger
 
 MYUSERNAME = "admin"
 MYPASSWORD = "changeme"
+DEFAULT_INSECURE_MQTT_PORT = 1883
+DEFAULT_TLS_MQTT_PORT = 8883
 
-class MQTTInterface(object):
+# pylint: disable=too-many-instance-attributes
+class MQTTInterface:
     """MQTT Interface management."""
     __instance = None
 
@@ -32,14 +28,18 @@ class MQTTInterface(object):
         super().__init__()
         self.server = None
         self.port = None
-
-        self.client = mqtt.Client("enki_%d" % os.getpid(), 1883, 60)
+        self.mqtts = False
+        self.client_name = f"enki_{os.getpid()}"
+        self.client = mqtt.Client(self.client_name, 1883, 60)
         self.client.user_data_set(self)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
         self.client.username_pw_set(MYUSERNAME, MYPASSWORD)
         self.subscribed_topics = ["spBv1.0/#"]
         self.forwarded_topics = {}
+        self.connect_callback = None
+        self.disconnect_callback = None
+        self.message_callback = None
 
     def set_server(self, server, port, certificate=None):
         """Set mqtt server address and port."""
@@ -52,14 +52,19 @@ class MQTTInterface(object):
         """Set mqtt server from its URI."""
         assert uritools.isuri(server_uri), f"{server_uri} is not a valid URI"
         uri = uritools.urisplit(server_uri)
-        mqtts = uri.scheme == "mqtts"
-        if mqtts:
-            port = uri.getport(default=8883)
+        self.mqtts = uri.scheme == "mqtts"
+        if self.mqtts:
+            port = uri.getport(default=DEFAULT_TLS_MQTT_PORT)
         else:
-            port = uri.getport(default=1883)
+            port = uri.getport(default=DEFAULT_INSECURE_MQTT_PORT)
 
         host = str(uri.gethost())
         self.set_server(host, port, certificate)
+
+    def get_uri(self) -> str:
+        """Returns the broker's URI."""
+        scheme = "mqtts" if self.mqtts else "mqtt"
+        return f"{scheme}://{self.server}:{self.port}"
 
     def get_subscribed_topics(self):
         """Get list of topics subscribed to."""
@@ -90,11 +95,14 @@ class MQTTInterface(object):
         self.forwarded_topics.pop(topic)
 
     @staticmethod
-    def on_connect(client, userdata, flags, ret):
+    def on_connect(client, userdata, _flags, ret):
         """The callback for when the client receives a CONNACK response from the server."""
         if ret != 0:
-            print("Failed to connect with result code "+str(ret))
+            print("Failed to connect with result code " + str(ret))
             sys.exit()
+
+        if userdata.connect_callback is not None:
+            userdata.connect_callback()
 
         # Subscribing in on_connect() means that if we lose the connection and
         # reconnect then subscriptions will be renewed.
@@ -102,54 +110,17 @@ class MQTTInterface(object):
             client.subscribe(topic)
 
     @staticmethod
-    def on_message(client, userdata, msg):
+    def on_message(_client, userdata, msg):
         """The callback for when a PUBLISH message is received from the server."""
-        topic = SparkplugTopic(msg.topic)
-
-        sp_net = SparkplugNetwork()
-        payload = sparkplug_b_pb2.Payload()
-        payload.ParseFromString(msg.payload)
-        if topic.is_nbirth():
-            print("Register node birth: %s" % (topic))
-            node = EdgeNode(topic, payload.metrics)
-            sp_net.add_eon(node)
-        elif topic.is_dbirth():
-            print("Register device birth: %s" % (topic))
-            eon = sp_net.find_eon(topic)
-            assert eon is not None, "Device birth before Node birth is not allowed"
-            dev = SPDev(topic, payload.metrics)
-            eon.add_dev(dev)
-        elif topic.is_ddata():
-            dev = sp_net.find_dev(topic)
-            eon = sp_net.find_eon(topic)
-            if dev is None:
-                print("Unknown device for topic : %s" % (topic))
-            else:
-                for metric in payload.metrics:
-                    dev_metric = dev.get_metric(metric.name, metric.alias)
-                    if dev_metric:
-                        dev.update_metric(metric)
-                        print("DDATA from device %s" % dev.get_short_handle())
-                        dev.print_metric(metric)
-                    else:
-                        print(f"No match for metric {metric.name}/{metric.alias} "
-                              f"in device {dev.get_short_handle()}")
-        elif topic.is_ddeath():
-            dev = sp_net.find_dev(topic)
-            eon = sp_net.find_eon(topic)
-            if dev is not None and eon is not None:
-                print("Device %s died" % dev.get_short_handle())
-                eon.remove_dev(dev)
-
-        loggers = sp_logger.SPLogger.get_all_matching_topic(msg.topic)
-        for logger in loggers:
-            logger.process_payload(payload)
+        if userdata.message_callback:
+            userdata.message_callback(userdata, msg)
 
         for (topic, q_io) in userdata.forwarded_topics.items():
             if mqtt.topic_matches_sub(topic, msg.topic):
                 q_io.put(msg)
 
-    def join(self, timeout=None):
+    def join(self, _timeout=None):
+        """Wait for the MQTT loop to stop."""
         self.client.loop_stop()
         MQTTInterface.__instance = None
 

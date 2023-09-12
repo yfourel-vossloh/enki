@@ -13,25 +13,6 @@ from sp_dev import SPDev
 from sp_network import SPNet
 
 
-int_value_types = [MetricDataType.Int8,
-                   MetricDataType.Int16,
-                   MetricDataType.Int32,
-                   MetricDataType.UInt8,
-                   MetricDataType.UInt16,
-                   MetricDataType.UInt32]
-long_value_types = [MetricDataType.Int64,
-                    MetricDataType.UInt64,
-                    MetricDataType.DateTime]
-float_value_types = [MetricDataType.Float]
-double_value_types = [MetricDataType.Double]
-boolean_value_types = [MetricDataType.Boolean]
-string_value_types = [MetricDataType.String,
-                      MetricDataType.Text,
-                      MetricDataType.UUID]
-bytes_value_types = [MetricDataType.Bytes,
-                     MetricDataType.File]
-
-
 def str_to_int(string):
     """Convert string to int.
 
@@ -285,14 +266,14 @@ class SPShell(cmd2.Cmd):
     def prompt_user_simple_datatype(self, name, datatype):
         """Ask the user to give a value for simple datatypes."""
         prompt = f"[{sp_helpers.datatype_to_str(datatype)}] {name}: "
-        if datatype in boolean_value_types:
+        if datatype in sp_helpers.boolean_value_types:
             usr_input = self.select([(True, "True"),
                                      (False, "False")], prompt)
             value = usr_input
-        elif datatype in int_value_types + long_value_types:
+        elif datatype in sp_helpers.int_value_types + sp_helpers.long_value_types:
             usr_input = self.read_input(prompt)
             value = str_to_int(usr_input)
-        elif datatype in string_value_types:
+        elif datatype in sp_helpers.string_value_types:
             value = self.read_input(prompt)
         return value
 
@@ -314,9 +295,9 @@ class SPShell(cmd2.Cmd):
 
     def forge_payload_from_metric(self, payload, metric):
         """Add a user modified version of metric to payload"""
-        simple_datatypes = int_value_types + long_value_types
-        simple_datatypes += boolean_value_types
-        simple_datatypes += string_value_types
+        simple_datatypes = sp_helpers.int_value_types + sp_helpers.long_value_types
+        simple_datatypes += sp_helpers.boolean_value_types
+        simple_datatypes += sp_helpers.string_value_types
         if metric.datatype in simple_datatypes:
             value = self.prompt_user_simple_datatype(metric.name,
                                                      metric.datatype)

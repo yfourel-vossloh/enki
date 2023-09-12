@@ -116,6 +116,24 @@ _DTYPE_TO_VAR = {
     MetricDataType.Template: "template_value"
 }
 
+int_value_types = [MetricDataType.Int8,
+                   MetricDataType.Int16,
+                   MetricDataType.Int32,
+                   MetricDataType.UInt8,
+                   MetricDataType.UInt16,
+                   MetricDataType.UInt32]
+long_value_types = [MetricDataType.Int64,
+                    MetricDataType.UInt64,
+                    MetricDataType.DateTime]
+float_value_types = [MetricDataType.Float]
+double_value_types = [MetricDataType.Double]
+boolean_value_types = [MetricDataType.Boolean]
+string_value_types = [MetricDataType.String,
+                      MetricDataType.Text,
+                      MetricDataType.UUID]
+bytes_value_types = [MetricDataType.Bytes,
+                     MetricDataType.File]
+
 def get_msg_type_str(msg_type: MsgType, eon: bool) -> str:
     """
     Returns the message type part of a Sparkplug topic.

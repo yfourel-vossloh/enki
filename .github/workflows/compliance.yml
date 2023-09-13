@@ -32,10 +32,12 @@ jobs:
       - name: VOG pylintrc
         working-directory: enki
         env:
-          BASE_REF: ${{ github.base_ref }}
+          MERGE_FROM_BRANCH: ${{ github.ref_name }}
+          MERGE_INTO_BRANCH: ${{ github.base_ref }}
+
         run: |
           export PYTHONPATH="${PYTHONPATH}:$(pwd)/tahu/python/core/"
-          py_files=$(git diff --name-only --diff-filter=d origin/${BASE_REF}...HEAD^2 -- '*.py')
+          py_files=$(git diff --name-only --diff-filter=d origin/${MERGE_INTO_BRANCH}...origin/${MERGE_FROM_BRANCH} -- '*.py')
           if [ ! -z ${py_files} ]; then
             pylint --rcfile ./.pylintrc ${py_files}
           fi

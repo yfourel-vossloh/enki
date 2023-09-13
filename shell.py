@@ -72,7 +72,9 @@ def get_property_value_str(prop):
     return res
 
 
-def get_timestamp_str(timestamp):
+def get_timestamp_str(timestamp: int) -> str:
+    """Returns a string containing a timestamp and its date conversion
+    :param timestamp: The timestamp, in ms, to convert to a string representation."""
     ts_s = int(timestamp / 1000)
     datetime_str = datetime.fromtimestamp(ts_s, tz=timezone.utc).isoformat()
     return f"{timestamp} ({datetime_str})"

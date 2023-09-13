@@ -39,8 +39,8 @@ jobs:
         run: |
           export PYTHONPATH="${PYTHONPATH}:$(pwd)/tahu/python/core/"
           py_files=$(git diff --name-only --diff-filter=d ${MERGE_TARGET_BRANCH_COMMIT} ${MERGE_FROM_BRANCH_COMMIT} -- '*.py')
-          pretty_file_list=$(echo $py_files | tr '\n' '\n\t- ')
-          echo "Running pylint on:\n${pretty_file_list}"
+          pretty_file_list=$(echo -e $py_files | awk 1 ORS='\n\t- ')
+          echo -e "Running pylint on:\n${pretty_file_list}"
           if [ ! -z "${py_files}" ]; then
             pylint --rcfile ./.pylintrc ${py_files}
           fi

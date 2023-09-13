@@ -27,7 +27,7 @@ jobs:
         working-directory: enki
         run: |
           pip install -r requirements.txt
-	  pip install pylint
+          pip install pylint
 
       - name: VOG pylintrc
         working-directory: enki

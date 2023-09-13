@@ -29,9 +29,11 @@ def on_message(_mqtt_client: MQTTInterface, msg) -> None:
     elif topic.get_msg_type() == MsgType.DEATH:
         SPNet().remove_by_id(topic.get_id())
 
-def handle_signal(_sig_num, _frame):
+
+def handle_signal(_sig_num, frame):
     """Used to exit the app on some signals."""
     sys.exit(1)
+
 
 def main():
     """Main function of the enki application."""

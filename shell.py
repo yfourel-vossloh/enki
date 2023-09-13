@@ -1,5 +1,6 @@
 """Enki shell interface."""
 import time
+from datetime import datetime, timezone
 
 import cmd2
 
@@ -70,10 +71,18 @@ def get_property_value_str(prop):
     res += f"\n\t\t\tvalue: {prop_value}"
     return res
 
+
+def get_timestamp_str(timestamp):
+    ts_s = int(timestamp / 1000)
+    dt = datetime.fromtimestamp(ts_s, tz=timezone.utc)
+    return f"{timestamp} ({dt.isoformat()})"
+
+
 def get_common_info_str(metric):
     """Common metric information string."""
     datatype_str = sp_helpers.datatype_to_str(metric.datatype)
-    res = f"\ttimestamp: {metric.timestamp}"
+    timestamp_str = get_timestamp_str(metric.timestamp)
+    res = f"\ttimestamp: {timestamp_str}"
     res += f"\n\tdatatype: {datatype_str}"
     if len(metric.properties.keys):
         res = res + "\n\tproperties:"

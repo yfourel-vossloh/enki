@@ -32,7 +32,7 @@ jobs:
       - name: VOG pylintrc
         working-directory: enki
         env:
-          MERGE_FROM_BRANCH: ${{ github.ref_name }}
+          MERGE_FROM_BRANCH: ${{ github.head_ref }}
           MERGE_INTO_BRANCH: ${{ github.base_ref }}
 
         run: |

@@ -29,15 +29,14 @@ jobs:
           pip install -r requirements.txt
           pip install pylint
 
-      - name: VOG pylintrc
+      - name: Running pylint
         working-directory: enki
         env:
-          MERGE_FROM_BRANCH: ${{ github.head_ref }}
-          MERGE_INTO_BRANCH: ${{ github.base_ref }}
-
+          MERGE_TARGET_BRANCH_COMMIT: ${{ github.event.pull_request.base.sha }}
+          MERGE_FROM_BRANCH_COMMIT : ${{ github.sha }}
         run: |
           export PYTHONPATH="${PYTHONPATH}:$(pwd)/tahu/python/core/"
-          py_files=$(git diff --name-only --diff-filter=d ${MERGE_INTO_BRANCH}...${MERGE_FROM_BRANCH} -- '*.py')
+          py_files=$(git diff --name-only --diff-filter=d ${MERGE_TARGET_BRANCH_COMMIT} ${MERGE_FROM_BRANCH_COMMIT} -- '*.py')
           if [ ! -z ${py_files} ]; then
             pylint --rcfile ./.pylintrc ${py_files}
           fi

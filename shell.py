@@ -74,8 +74,8 @@ def get_property_value_str(prop):
 
 def get_timestamp_str(timestamp):
     ts_s = int(timestamp / 1000)
-    dt = datetime.fromtimestamp(ts_s, tz=timezone.utc)
-    return f"{timestamp} ({dt.isoformat()})"
+    datetime_str = datetime.fromtimestamp(ts_s, tz=timezone.utc).isoformat()
+    return f"{timestamp} ({datetime_str})"
 
 
 def get_common_info_str(metric):

@@ -39,7 +39,7 @@ jobs:
           if [ ! -z "${py_files}" ]; then
             echo "Running pylint on:"
             for f in $(echo $py_files); do
-              echo "\t- ${f}"
+              echo -e "\t- ${f}"
             done
             pylint --rcfile ./.pylintrc ${py_files}
           else

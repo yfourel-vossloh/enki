@@ -49,7 +49,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Build only
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name != 'push' }}
         id: docker_build
         uses: docker/build-push-action@v3
         with:
@@ -59,7 +59,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Build and push
-        if: ${{ github.event_name != 'push' }}
+        if: ${{ github.event_name == 'push' }}
         id: docker_build_push
         uses: docker/build-push-action@v3
         with:

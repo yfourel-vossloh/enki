@@ -3,6 +3,9 @@ on:
   push:
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - 'main'
 
 env:
   REGISTRY: ghcr.io
@@ -45,8 +48,19 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build and push
+      - name: Build only
+        if: ${{ github.event_name == 'push' }}
         id: docker_build
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: false
+          tags: ${{ steps.get_version.outputs.GHCR_TAG }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Build and push
+        if: ${{ github.event_name != 'push' }}
+        id: docker_build_push
         uses: docker/build-push-action@v3
         with:
           context: .

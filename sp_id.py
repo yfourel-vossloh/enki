@@ -31,7 +31,6 @@ class SPId:
                 and (self.dev_id == other.dev_id))
 
     def is_eon(self) -> bool:
-        string = "%s%d" % ("hello", 2)
         """Returns True if this Id belongs to an EoN."""
         return self.dev_id is None
 

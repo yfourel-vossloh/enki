@@ -40,7 +40,7 @@ class SPTopic:
     def __str__(self) -> str:
         topic = sp_helpers.SP_NAMESPACE
         topic += "/" + self.sp_id.group_id
-        topic += "/" + sp_helpers.get_msg_type_str(self.msg_type, self.sp_id.is_eon)
+        topic += "/" + sp_helpers.get_msg_type_str(self.msg_type, self.sp_id.is_eon())
         topic += "/" + self.sp_id.eon_id
         topic += sp_helpers.get_dev_id_str(self.sp_id.dev_id)
         return topic

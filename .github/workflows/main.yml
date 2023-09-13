@@ -27,8 +27,9 @@ jobs:
       - name: Get the version
         id: get_version
         run: |
-          echo "image-name=$(echo ${GITHUB_REPOSITORY} | tr A-Z a-z)" >> "$GITHUB_OUTPUT"
-          echo "ghcr-tag=ghcr.io/${{ steps.get_version.outputs.image-name }}:${GITHUB_REF/refs\/tags\//}" >> "$GITHUB_OUTPUT"
+          image_name=$(echo ${GITHUB_REPOSITORY} | tr A-Z a-z)
+          echo "image-name=$image_name" >> "$GITHUB_OUTPUT"
+          echo "ghcr-tag=ghcr.io/$image_name:${GITHUB_REF/refs\/tags\//}" >> "$GITHUB_OUTPUT"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2

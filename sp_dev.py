@@ -54,6 +54,7 @@ class SPDev:
 
     def get_metric(self, name, alias=None):
         """Get metric object from its name or alias"""
+        a = 5
         for metric in self.metrics:
             if metric.name == name:
                 return metric

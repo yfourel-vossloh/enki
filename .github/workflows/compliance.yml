@@ -38,6 +38,7 @@ jobs:
         run: |
           export PYTHONPATH="${PYTHONPATH}:$(pwd)/tahu/python/core/"
           py_files=$(git diff --name-only --diff-filter=d ${MERGE_TARGET_BRANCH_COMMIT} ${MERGE_FROM_BRANCH_COMMIT} -- '*.py')
+          echo $py_files
           if [ ! -z ${py_files} ]; then
             pylint --rcfile ./.pylintrc ${py_files}
           fi

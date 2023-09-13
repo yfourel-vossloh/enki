@@ -33,12 +33,9 @@ jobs:
 
       - name: Running pylint
         working-directory: enki
-        env:
-          MERGE_TARGET_BRANCH_COMMIT: ${{ github.event.pull_request.base.sha }}
-          MERGE_FROM_BRANCH_COMMIT : ${{ github.sha }}
         run: |
           export PYTHONPATH="${PYTHONPATH}:$(pwd)/tahu/python/core/"
-          py_files=$(git diff --name-only --diff-filter=d ${MERGE_TARGET_BRANCH_COMMIT} ${MERGE_FROM_BRANCH_COMMIT} -- '*.py')
+          py_files=$(find . -maxdepth 1 -type f -name "*.py")
           if [ ! -z "${py_files}" ]; then
             echo "Running pylint on:"
             for f in $(echo $py_files); do

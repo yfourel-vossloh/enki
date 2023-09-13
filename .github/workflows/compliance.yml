@@ -1,0 +1,41 @@
+name: Build Docker Image Enki
+on:
+  pull_request:
+    branches:
+      - 'main'
+
+jobs:
+  pylint-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: 'true'
+          path: enki
+
+      - name: cache-pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-doc-pip
+
+      - name: Install python dependencies
+        working-directory: enki
+        run: |
+          pip install -r requirements.txt
+	  pip install pylint
+
+      - name: VOG pylintrc
+        working-directory: enki
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:$(pwd)/tahu/python/core/"
+          py_files=$(git diff --name-only --diff-filter=d origin/${BASE_REF}...HEAD^2 -- '*.py')
+          if [ ! -z ${py_files} ]; then
+            pylint --rcfile ./.pylintrc ${py_files}
+          fi

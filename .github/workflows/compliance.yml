@@ -1,0 +1,47 @@
+name: Compliance
+on:
+  pull_request:
+    branches:
+      - 'main'
+
+jobs:
+  pylint-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: 'true'
+          path: enki
+          fetch-depth: 0
+
+      - name: cache-pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-doc-pip
+
+      - name: Install python dependencies
+        working-directory: enki
+        run: |
+          pip install -r requirements.txt
+          pip install pylint
+          pip install pylint-protobuf
+
+      - name: Running pylint
+        working-directory: enki
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:$(pwd)/tahu/python/core/"
+          py_files=$(find . -maxdepth 1 -type f -name "*.py")
+          if [ ! -z "${py_files}" ]; then
+            echo "Running pylint on:"
+            for f in $(echo $py_files); do
+              echo -e "\t- ${f}"
+            done
+            pylint --rcfile ./.pylintrc ${py_files}
+          else
+            echo "No python file to check"
+          fi

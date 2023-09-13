@@ -29,6 +29,7 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install pylint
+          pip install pylint-protobuf
 
       - name: Running pylint
         working-directory: enki

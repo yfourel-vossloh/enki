@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import cmd2
 
 import sparkplug_b_pb2
-from sparkplug_b import MetricDataType, addMetric, initDatasetMetric
+from sparkplug_b import MetricDataType, addMetric, addNullMetric, initDatasetMetric
 
 import sp_helpers
 from sp_helpers import MsgType
@@ -23,6 +23,20 @@ def str_to_int(string):
     if string[0:2] == '0x':
         return int(string, 16)
     return int(string)
+
+
+def str_to_bool(string):
+    """Convert a user string to a bool value
+
+    Accepted values for True are: True, Yes, Y, 1
+    The string is case-insensitive
+    All other values are considered equal to False
+    """
+    string = string.lower()
+    if string in ["true", "yes", "y", "1"]:
+        return True
+    return False
+
 
 def get_bytearray_str(bytes_array):
     """String representation of a bytearray value."""
@@ -277,15 +291,17 @@ class SPShell(cmd2.Cmd):
     def prompt_user_simple_datatype(self, name, datatype):
         """Ask the user to give a value for simple datatypes."""
         prompt = f"[{sp_helpers.datatype_to_str(datatype)}] {name}: "
-        if datatype in sp_helpers.boolean_value_types:
-            usr_input = self.select([(True, "True"),
-                                     (False, "False")], prompt)
-            value = usr_input
-        elif datatype in sp_helpers.int_value_types + sp_helpers.long_value_types:
+        value = None
+        try:
             usr_input = self.read_input(prompt)
+        except EOFError:
+            return None
+        if datatype in sp_helpers.boolean_value_types:
+            value = str_to_bool(usr_input)
+        elif datatype in sp_helpers.int_value_types + sp_helpers.long_value_types:
             value = str_to_int(usr_input)
         elif datatype in sp_helpers.string_value_types:
-            value = self.read_input(prompt)
+            value = usr_input
         return value
 
     def forge_dataset_metric(self, payload, metric):
@@ -301,7 +317,10 @@ class SPShell(cmd2.Cmd):
                 name = f"{metric.name}/{col}"
                 value = self.prompt_user_simple_datatype(name, datatype)
                 element = row.elements.add()
-                sp_helpers.set_typed_value(datatype, element, value)
+                if value is not None:
+                    sp_helpers.set_typed_value(datatype, element, value)
+                else:
+                    element.is_null = True
             new_row = self.query_yes_no("new row ?")
 
     def forge_payload_from_metric(self, payload, metric):
@@ -312,8 +331,11 @@ class SPShell(cmd2.Cmd):
         if metric.datatype in simple_datatypes:
             value = self.prompt_user_simple_datatype(metric.name,
                                                      metric.datatype)
-            addMetric(payload, metric.name, metric.alias, metric.datatype,
-                      value)
+            if value is not None:
+                addMetric(payload, metric.name, metric.alias, metric.datatype,
+                          value)
+            else:
+                addNullMetric(payload, metric.name, metric.alias, metric.datatype)
         elif metric.datatype == MetricDataType.DataSet:
             self.forge_dataset_metric(payload, metric)
         else:

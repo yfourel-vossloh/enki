@@ -27,10 +27,7 @@ jobs:
       - name: Install python dependencies
         working-directory: enki
         run: |
-          pip install -r requirements.txt
-          pip install pylint
-          pip install pylint-protobuf
-
+          pip install -r requirements_pylint.txt
       - name: Running pylint
         working-directory: enki
         run: |

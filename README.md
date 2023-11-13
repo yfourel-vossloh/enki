@@ -11,6 +11,8 @@ export PYTHONPATH=${PYTHONPATH}:$(pwd)/tahu/python/core/
 ```
 When launched, the `enki.py` script gives access to a shell with commands to manage topics subscriptions, list EoN and devices, craft metrics into payload. Type `help` to see the list of commands available.
 
+Additional usage information can be found [here](usage.md).
+
 # Demo
 [![asciicast](https://asciinema.org/a/lKGTwxDlLOYwGtsF1kecBLfa0.svg)](https://asciinema.org/a/lKGTwxDlLOYwGtsF1kecBLfa0)
 
